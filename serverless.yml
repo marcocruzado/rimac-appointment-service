@@ -1,0 +1,231 @@
+service: rimac-appointment-backend
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs16.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  environment:
+    APPOINTMENTS_TABLE: appointments-${self:provider.stage}
+    SNS_TOPIC_ARN: !Ref AppointmentTopic
+    SQS_APPOINTMENT_PE_URL: !Ref AppointmentPeQueue
+    SQS_APPOINTMENT_CL_URL: !Ref AppointmentClQueue
+    SQS_CONFIRMATION_URL: !Ref ConfirmationQueue
+    EVENT_BUS_NAME: !Ref AppointmentEventBus
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:UpdateItem
+      Resource: !GetAtt AppointmentsTable.Arn
+    - Effect: Allow
+      Action:
+        - sns:Publish
+      Resource: !Ref AppointmentTopic
+    - Effect: Allow
+      Action:
+        - sqs:SendMessage
+        - sqs:ReceiveMessage
+        - sqs:DeleteMessage
+        - sqs:GetQueueAttributes
+      Resource:
+        - !GetAtt AppointmentPeQueue.Arn
+        - !GetAtt AppointmentClQueue.Arn
+        - !GetAtt ConfirmationQueue.Arn
+    - Effect: Allow
+      Action:
+        - events:PutEvents
+      Resource: !GetAtt AppointmentEventBus.Arn
+    - Effect: Allow
+      Action:
+        - rds:*
+      Resource: "*"
+
+functions:
+  appointment:
+    handler: src/adapters/primary/handlers/appointment.handler
+    events:
+      - http:
+          path: /appointments
+          method: post
+          cors: true
+      - http:
+          path: /appointments/{insuredId}
+          method: get
+          cors: true
+      - sqs:
+          arn: !GetAtt ConfirmationQueue.Arn
+          batchSize: 1
+
+  appointmentPe:
+    handler: src/adapters/primary/handlers/appointment-pe.handler
+    events:
+      - sqs:
+          arn: !GetAtt AppointmentPeQueue.Arn
+          batchSize: 1
+
+  appointmentCl:
+    handler: src/adapters/primary/handlers/appointment-cl.handler
+    events:
+      - sqs:
+          arn: !GetAtt AppointmentClQueue.Arn
+          batchSize: 1
+
+resources:
+  Resources:
+    AppointmentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.APPOINTMENTS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: insuredId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: insuredId-index
+            KeySchema:
+              - AttributeName: insuredId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    AppointmentTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: appointment-topic-${self:provider.stage}
+        Tags:
+          - Key: environment
+            Value: ${self:provider.stage}
+
+    AppointmentPeSnsSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        TopicArn: !Ref AppointmentTopic
+        Protocol: sqs
+        Endpoint: !GetAtt AppointmentPeQueue.Arn
+        FilterPolicy:
+          countryISO:
+            - PE
+
+    AppointmentClSnsSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        TopicArn: !Ref AppointmentTopic
+        Protocol: sqs
+        Endpoint: !GetAtt AppointmentClQueue.Arn
+        FilterPolicy:
+          countryISO:
+            - CL
+
+    AppointmentPeQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: appointment-pe-queue-${self:provider.stage}
+        MessageRetentionPeriod: 1209600 # 14 days in seconds
+        VisibilityTimeout: 300 # 5 minutes
+
+    AppointmentClQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: appointment-cl-queue-${self:provider.stage}
+        MessageRetentionPeriod: 1209600 # 14 days in seconds
+        VisibilityTimeout: 300 # 5 minutes
+
+    ConfirmationQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: confirmation-queue-${self:provider.stage}
+        MessageRetentionPeriod: 1209600 # 14 days in seconds
+        VisibilityTimeout: 300 # 5 minutes
+
+    AppointmentPeQueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action: "sqs:SendMessage"
+              Resource: !GetAtt AppointmentPeQueue.Arn
+              Condition:
+                ArnEquals:
+                  "aws:SourceArn": !Ref AppointmentTopic
+        Queues:
+          - !Ref AppointmentPeQueue
+
+    AppointmentClQueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action: "sqs:SendMessage"
+              Resource: !GetAtt AppointmentClQueue.Arn
+              Condition:
+                ArnEquals:
+                  "aws:SourceArn": !Ref AppointmentTopic
+        Queues:
+          - !Ref AppointmentClQueue
+
+    AppointmentEventBus:
+      Type: AWS::Events::EventBus
+      Properties:
+        Name: appointment-event-bus-${self:provider.stage}
+
+    AppointmentConfirmationRule:
+      Type: AWS::Events::Rule
+      Properties:
+        EventBusName: !Ref AppointmentEventBus
+        EventPattern:
+          source:
+            - "appointment.service"
+          detail-type:
+            - "AppointmentConfirmed"
+        State: ENABLED
+        Targets:
+          - Arn: !GetAtt ConfirmationQueue.Arn
+            Id: "AppointmentConfirmationTarget"
+
+    EventBusToSqsPermission:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: events.amazonaws.com
+              Action: "sqs:SendMessage"
+              Resource: !GetAtt ConfirmationQueue.Arn
+              Condition:
+                ArnEquals:
+                  "aws:SourceArn": !GetAtt AppointmentConfirmationRule.Arn
+        Queues:
+          - !Ref ConfirmationQueue
+
+plugins:
+  - serverless-offline
+  - serverless-esbuild
+
+custom:
+  esbuild:
+    bundle: true
+    minify: true
+    sourcemap: true
+    target: 'node16'
+    platform: 'node'
+    external:
+      - aws-sdk
