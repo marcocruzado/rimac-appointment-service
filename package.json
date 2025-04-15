@@ -6,7 +6,6 @@
     "@types/node": "^18.15.0",
     "@typescript-eslint/eslint-plugin": "^5.54.1",
     "@typescript-eslint/parser": "^5.54.1",
-    "aws-sdk": "^2.1328.0",
     "dotenv": "^16.0.3",
     "eslint": "^8.35.0",
     "eslint-config-prettier": "^8.7.0",
@@ -24,6 +23,11 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.511.0",
+    "@aws-sdk/client-eventbridge": "^3.511.0",
+    "@aws-sdk/client-sns": "^3.511.0",
+    "@aws-sdk/client-sqs": "^3.511.0",
+    "@aws-sdk/lib-dynamodb": "^3.511.0",
     "@middy/core": "^4.5.5",
     "@middy/http-json-body-parser": "^4.5.5",
     "@types/uuid": "^9.0.1",
@@ -42,8 +46,8 @@
     "start": "serverless offline start",
     "dev": "serverless offline start --stage dev",
     "build": "tsc",
-    "deploy:dev": "serverless deploy --stage dev --verbose",
-    "deploy:prod": "serverless deploy --stage prod --verbose",
+    "deploy:dev": "rimraf .build && rimraf .serverless && serverless deploy --stage dev --verbose",
+    "deploy:prod": "rimraf .build && rimraf .serverless && serverless deploy --stage prod --verbose",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -52,7 +56,7 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "prepare": "husky install",
-    "migrate:mysql": "npx ts-node database/migrations/run.ts"
+    "migrate:mysql": "npx ts-node src/adapters/secondary/database/migrations/run.ts"
   },
   "keywords": [
     "rimac",

@@ -232,8 +232,14 @@ custom:
     bundle: true
     minify: true
     sourcemap: true
-    target: 'node16'
+    target: 'node18'
     platform: 'node'
+    external:
+      - '@aws-sdk/client-dynamodb'
+      - '@aws-sdk/client-sns'
+      - '@aws-sdk/client-sqs'
+      - '@aws-sdk/client-eventbridge'
+      - '@aws-sdk/lib-dynamodb'
   dynamodb:
     stages:
       - dev
