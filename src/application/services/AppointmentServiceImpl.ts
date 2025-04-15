@@ -1,4 +1,4 @@
-import { Appointment, CreateAppointmentRequest } from '../../domain/entities/Appointment';
+import { Appointment, CreateAppointmentDto } from '../../domain/entities/Appointment';
 import { AppointmentService } from '../../domain/ports/primary/AppointmentService';
 import { CreateAppointmentUseCase } from '../usecases/CreateAppointmentUseCase';
 import { GetAppointmentsByInsuredUseCase } from '../usecases/GetAppointmentsByInsuredUseCase';
@@ -29,7 +29,7 @@ export class AppointmentServiceImpl implements AppointmentService {
    * @param request Datos para crear la cita
    * @returns Promesa con la cita creada
    */
-  async createAppointment(request: CreateAppointmentRequest): Promise<Appointment> {
+  async createAppointment(request: CreateAppointmentDto): Promise<Appointment> {
     return this.createAppointmentUseCase.execute(request);
   }
 

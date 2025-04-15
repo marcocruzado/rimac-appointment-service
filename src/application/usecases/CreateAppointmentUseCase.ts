@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Appointment, CreateAppointmentRequest, CountryISO, AppointmentStatus } from '../../domain/entities/Appointment';
-import { AppointmentRepository } from '../../domain/ports/secondary/AppointmentRepository';
+import { Appointment, AppointmentStatus, CreateAppointmentDto, CountryISO } from '../../domain/entities/Appointment';
+import { AppointmentRepository } from '../../domain/repositories/AppointmentRepository';
 import { MessageBroker } from '../../domain/ports/secondary/MessageBroker';
 
 /**
@@ -12,7 +12,7 @@ export class CreateAppointmentUseCase {
    * Constructor del caso de uso
    * @param appointmentRepository Repositorio de citas
    * @param messageBroker Broker de mensajes
-   */
+   */ 
   constructor(
     private readonly appointmentRepository: AppointmentRepository,
     private readonly messageBroker: MessageBroker
@@ -23,36 +23,42 @@ export class CreateAppointmentUseCase {
    * @param request Datos para crear la cita
    * @returns Promesa con la cita creada
    */
-  async execute(request: CreateAppointmentRequest): Promise<Appointment> {
+  async execute(data: CreateAppointmentDto): Promise<Appointment> {
     try {
-      // Validar el país
-      const countryISO = request.countryISO as CountryISO;
-      if (!Object.values(CountryISO).includes(countryISO)) {
-        throw new Error(`País no válido: ${request.countryISO}. Debe ser PE o CL.`);
+      // Verificar si el asegurado ya tiene citas pendientes
+      const existingAppointments = await this.appointmentRepository.findByInsuredId(
+        data.insuredId,
+        data.countryIso
+      );
+
+      const hasPendingAppointment = existingAppointments.some(
+        appointment => appointment.status === AppointmentStatus.PENDING
+      );
+
+      if (hasPendingAppointment) {
+        throw new Error('El asegurado ya tiene una cita pendiente');
       }
 
       // Crear la entidad de dominio
-      const appointmentId = uuidv4();
       const appointment = new Appointment(
-        appointmentId,
-        request.insuredId,
-        request.scheduleId,
-        countryISO,
-        AppointmentStatus.PENDING
+        uuidv4(),
+        data.insuredId,
+        data.scheduleId,
+        data.countryIso
       );
 
-      // Guardar en DynamoDB
-      const savedAppointment = await this.appointmentRepository.save(appointment);
+      // Guardar en la base de datos
+      const savedAppointment = await this.appointmentRepository.create(data);
 
-      // Publicar en SNS con filtro por país
+      // Publicar evento
       await this.messageBroker.publish(
-        'appointment-topic', 
+        'appointment-created',
         savedAppointment,
-        { countryISO: savedAppointment.countryISO }
+        { countryIso: savedAppointment.countryIso }
       );
 
       return savedAppointment;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al crear cita:', error);
       throw error;
     }

@@ -1,4 +1,4 @@
-import { Appointment, CreateAppointmentRequest } from '../../entities/Appointment';
+import { Appointment, CreateAppointmentDto } from '../../entities/Appointment';
 
 /**
  * Puerto primario que define los servicios de citas médicas
@@ -10,7 +10,7 @@ export interface AppointmentService {
    * @param request Datos para crear la cita
    * @returns Promesa con la cita creada
    */
-  createAppointment(request: CreateAppointmentRequest): Promise<Appointment>;
+  createAppointment(request: CreateAppointmentDto): Promise<Appointment>;
   
   /**
    * Obtiene todas las citas de un asegurado

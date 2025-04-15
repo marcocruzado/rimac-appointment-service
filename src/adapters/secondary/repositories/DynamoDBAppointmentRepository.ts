@@ -96,4 +96,15 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
     
     return appointment;
   }
+
+  async create(appointment: Appointment): Promise<Appointment> {
+    return this.save(appointment);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.dynamoDBClient.delete({
+      TableName: this.tableName,
+      Key: { id }
+    }).promise();
+  }
 }

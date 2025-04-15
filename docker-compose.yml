@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  mysql-pe:
+    image: mysql:8.0
+    container_name: rimac-mysql-pe
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: rimac_appointments_pe
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data-pe:/var/lib/mysql
+      - ./migrations:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - rimac-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mysql-cl:
+    image: mysql:8.0
+    container_name: rimac-mysql-cl
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: rimac_appointments_cl
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin123
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data-cl:/var/lib/mysql
+      - ./migrations:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - rimac-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql-data-pe:
+  mysql-data-cl:
+
+networks:
+  rimac-network:
+    driver: bridge 

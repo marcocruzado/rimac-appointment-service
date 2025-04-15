@@ -38,7 +38,7 @@ export class AWSMessageBroker implements MessageBroker {
     
     await this.snsClient.publish({
       TopicArn: topicArn,
-      Message: JSON.stringify(appointment.toDTO()),
+      Message: JSON.stringify(appointment),
       MessageAttributes: messageAttributes
     }).promise();
   }
@@ -63,7 +63,7 @@ export class AWSMessageBroker implements MessageBroker {
           EventBusName: eventBusName,
           Source: source,
           DetailType: detailType,
-          Detail: JSON.stringify(appointment.toDTO())
+          Detail: JSON.stringify(appointment)
         }
       ]
     }).promise();

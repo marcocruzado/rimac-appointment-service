@@ -1,0 +1,87 @@
+{
+	"info": {
+		"_postman_id": "unique-id",
+		"name": "RIMAC Appointment Service",
+		"description": "Colección para probar el servicio de citas médicas",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Crear Cita",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"insuredId\": \"12345\",\n    \"scheduleId\": \"SCH001\",\n    \"countryISO\": \"PE\",\n    \"specialtyId\": \"ESP001\",\n    \"doctorId\": \"DOC001\",\n    \"appointmentDate\": \"2024-03-20T15:00:00Z\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/appointments",
+					"host": ["{{baseUrl}}"],
+					"path": ["appointments"]
+				}
+			}
+		},
+		{
+			"name": "Obtener Cita por ID",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/appointments/{{appointmentId}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["appointments", "{{appointmentId}}"]
+				}
+			}
+		},
+		{
+			"name": "Obtener Citas por Asegurado",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/appointments/insured/{{insuredId}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["appointments", "insured", "{{insuredId}}"]
+				}
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://your-api-id.execute-api.us-east-1.amazonaws.com/dev"
+		},
+		{
+			"key": "apiKey",
+			"value": "your-api-key"
+		},
+		{
+			"key": "appointmentId",
+			"value": "apt-123-456"
+		},
+		{
+			"key": "insuredId",
+			"value": "12345"
+		}
+	]
+} 

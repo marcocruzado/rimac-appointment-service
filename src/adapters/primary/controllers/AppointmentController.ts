@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { CreateAppointmentRequest } from '../../../domain/entities/Appointment';
+import { CreateAppointmentDto } from '../../../domain/entities/Appointment';
 import { AppointmentService } from '../../../domain/ports/primary/AppointmentService';
 
 /**
@@ -30,7 +30,7 @@ export class AppointmentController {
       }
 
       // Parsear el cuerpo de la solicitud
-      const request = JSON.parse(event.body) as CreateAppointmentRequest;
+      const request = JSON.parse(event.body) as CreateAppointmentDto;
       
       // Crear la cita
       const appointment = await this.appointmentService.createAppointment(request);
@@ -41,7 +41,7 @@ export class AppointmentController {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: 'Agendamiento en proceso',
-          appointment: appointment.toDTO()
+          appointment
         })
       };
     } catch (error) {
@@ -81,7 +81,7 @@ export class AppointmentController {
       const appointments = await this.appointmentService.getAppointmentsByInsured(insuredId);
       
       // Convertir a DTOs para la respuesta
-      const appointmentDTOs = appointments.map(appointment => appointment.toDTO());
+      const appointmentDTOs = appointments;
       
       // Devolver respuesta exitosa
       return {

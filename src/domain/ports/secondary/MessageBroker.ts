@@ -6,13 +6,12 @@ import { Appointment } from '../../entities/Appointment';
  */
 export interface MessageBroker {
   /**
-   * Publica un mensaje con los datos de la cita
-   * @param topic Tema donde publicar el mensaje
-   * @param appointment La cita a publicar
+   * Publica un mensaje en el broker
+   * @param event Nombre del evento
+   * @param data Datos a publicar
    * @param attributes Atributos adicionales para el mensaje
-   * @returns Promesa con el resultado de la operación
    */
-  publish(topic: string, appointment: Appointment, attributes?: Record<string, string>): Promise<void>;
+  publish(event: string, data: any, attributes?: Record<string, string>): Promise<void>;
   
   /**
    * Envía un evento al bus de eventos

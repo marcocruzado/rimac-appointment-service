@@ -1,13 +1,25 @@
-service: rimac-appointment-backend
+service: rimac-appointment-service
 
 frameworkVersion: '3'
 
+useDotenv: true
+
 provider:
   name: aws
-  runtime: nodejs16.x
+  runtime: nodejs18.x
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
   environment:
+    MYSQL_HOST_PE: ${env:MYSQL_HOST_PE}
+    MYSQL_USER_PE: ${env:MYSQL_USER_PE}
+    MYSQL_PASSWORD_PE: ${env:MYSQL_PASSWORD_PE}
+    MYSQL_DATABASE_PE: ${env:MYSQL_DATABASE_PE}
+    MYSQL_PORT_PE: ${env:MYSQL_PORT_PE}
+    MYSQL_HOST_CL: ${env:MYSQL_HOST_CL}
+    MYSQL_USER_CL: ${env:MYSQL_USER_CL}
+    MYSQL_PASSWORD_CL: ${env:MYSQL_PASSWORD_CL}
+    MYSQL_DATABASE_CL: ${env:MYSQL_DATABASE_CL}
+    MYSQL_PORT_CL: ${env:MYSQL_PORT_CL}
     APPOINTMENTS_TABLE: appointments-${self:provider.stage}
     SNS_TOPIC_ARN: !Ref AppointmentTopic
     SQS_APPOINTMENT_PE_URL: !Ref AppointmentPeQueue
@@ -47,20 +59,13 @@ provider:
       Resource: "*"
 
 functions:
-  appointment:
-    handler: src/adapters/primary/handlers/appointment.handler
+  createAppointment:
+    handler: src/adapters/handlers/createAppointment.handler
     events:
       - http:
           path: /appointments
           method: post
           cors: true
-      - http:
-          path: /appointments/{insuredId}
-          method: get
-          cors: true
-      - sqs:
-          arn: !GetAtt ConfirmationQueue.Arn
-          batchSize: 1
 
   appointmentPe:
     handler: src/adapters/primary/handlers/appointment-pe.handler
@@ -217,8 +222,10 @@ resources:
           - !Ref ConfirmationQueue
 
 plugins:
+  - serverless-plugin-typescript
   - serverless-offline
-  - serverless-esbuild
+  - serverless-dynamodb-local
+  - serverless-dotenv-plugin
 
 custom:
   esbuild:
@@ -227,5 +234,26 @@ custom:
     sourcemap: true
     target: 'node16'
     platform: 'node'
-    external:
-      - aws-sdk
+  dynamodb:
+    stages:
+      - dev
+    start:
+      port: 8000
+      inMemory: true
+      migrate: true
+      seed: true
+
+package:
+  patterns:
+    - '!node_modules/.prisma/**'
+    - '!node_modules/@prisma/engines/**'
+    - '!tests/**'
+    - '!coverage/**'
+    - '!.git/**'
+    - '!README.md'
+    - '!.env*'
+    - '!.eslintrc*'
+    - '!.prettierrc*'
+    - '!jest.config.*'
+    - '!tsconfig.json'
+    - '!.husky/**'

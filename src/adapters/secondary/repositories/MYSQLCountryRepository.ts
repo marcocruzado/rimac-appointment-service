@@ -40,7 +40,7 @@ export class MySQLCountryAppointmentRepository implements CountryAppointmentRepo
         appointment.id,
         appointment.insuredId,
         appointment.scheduleId,
-        appointment.countryISO,
+        appointment.countryIso,
         appointment.status,
         appointment.createdAt,
         appointment.updatedAt
@@ -49,7 +49,7 @@ export class MySQLCountryAppointmentRepository implements CountryAppointmentRepo
       const [result] = await this.dbConnection.execute(query, params);
       return true;
     } catch (error) {
-      console.error(`Error al guardar cita en MySQL para el país ${appointment.countryISO}:`, error);
+      console.error(`Error al guardar cita en MySQL para el país ${appointment.countryIso}:`, error);
       return false;
     }
   }

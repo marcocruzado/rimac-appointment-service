@@ -9,7 +9,7 @@ import { GetAppointmentsByInsuredUseCase } from '../../../application/usecases/G
 import { ProcessAppointmentUseCase } from '../../../application/usecases/ProcessAppointmentUseCase';
 import { CompleteAppointmentUseCase } from '../../../application/usecases/CompleteAppointmentUseCase';
 import { DynamoDBAppointmentRepository } from '../../secondary/repositories/DynamoDBAppointmentRepository';
-import { AWSMessageBroker } from '../../secondary/messaging/AWSMessageBroker';
+import { AWSMessageBroker } from '../../secondary/messaging/AWSMessageBroker'; 
 
 // Inicialización de clientes de AWS
 const dynamoDBClient = new DynamoDB.DocumentClient();
@@ -26,7 +26,7 @@ const appointmentRepository = new DynamoDBAppointmentRepository(dynamoDBClient, 
 const messageBroker = new AWSMessageBroker(snsClient, eventBridgeClient);
 
 // Inicialización de casos de uso
-const createAppointmentUseCase = new CreateAppointmentUseCase(appointmentRepository, messageBroker);
+const createAppointmentUseCase = new CreateAppointmentUseCase(appointmentRepository as any, messageBroker);  
 const getAppointmentsByInsuredUseCase = new GetAppointmentsByInsuredUseCase(appointmentRepository);
 // Nota: Estos casos de uso se inicializan con valores mock ya que no se utilizan directamente en este handler
 const processAppointmentUseCase = new ProcessAppointmentUseCase({} as any, {} as any);

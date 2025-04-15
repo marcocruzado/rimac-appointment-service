@@ -1,7 +1,7 @@
 import { SQSEvent } from 'aws-lambda';
 import { EventBridge } from 'aws-sdk';
 import * as mysql from 'mysql2/promise';
-import { Appointment, AppointmentDTO } from '../../../domain/entities/Appointment';
+import { Appointment, AppointmentDTO, CountryISO, AppointmentStatus } from '../../../domain/entities/Appointment';
 import { MySQLCountryAppointmentRepository } from '../../secondary/repositories/MYSQLCountryRepository';
 import { AWSMessageBroker } from '../../secondary/messaging/AWSMessageBroker';
 import { ProcessAppointmentUseCase } from '../../../application/usecases/ProcessAppointmentUseCase';
@@ -50,7 +50,7 @@ export const handler = async (event: SQSEvent): Promise<void> => {
         console.log('Datos de la cita:', appointmentData);
         
         // Convertir a entidad de dominio
-        const appointment = Appointment.fromDTO(appointmentData);
+        const appointment = new Appointment(appointmentData.id, appointmentData.insuredId, appointmentData.scheduleId.toString()  , appointmentData.countryISO as CountryISO, appointmentData.status as AppointmentStatus, new Date(appointmentData.createdAt), new Date(appointmentData.updatedAt));
         
         // Procesar la cita en la base de datos de Perú
         await processAppointmentUseCase.execute(appointment);
