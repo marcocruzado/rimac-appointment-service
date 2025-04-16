@@ -8,13 +8,11 @@ const runMigration = async () => {
   for (const country of countries) {
     const { host, user, password, database } = dbs[country];
 
-    // 1. Conectarse sin especificar la base de datos
     const rootConnection = await mysql.createConnection({ host, user, password });
     await rootConnection.query(`CREATE DATABASE IF NOT EXISTS \`${database}\``);
     console.log(`🛠️  Base de datos '${database}' verificada/creada`);
     await rootConnection.end();
 
-    // 2. Conectarse ahora a la base creada
     const dbConnection = await mysql.createConnection({ host, user, password, database });
     const createTableSQL = createAppointmentsTableSQL(country);
     await dbConnection.execute(createTableSQL);

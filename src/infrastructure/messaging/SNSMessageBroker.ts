@@ -46,7 +46,6 @@ export class SNSMessageBroker implements MessageBroker {
     detailType: string,
     detail: any
   ): Promise<void> {
-    // Esta implementación no es necesaria para SNS
-    throw new Error('Método no implementado para SNS');
+      throw new Error('Método no implementado para SNS');
   }
 } 

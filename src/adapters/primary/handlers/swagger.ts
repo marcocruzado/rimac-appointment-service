@@ -44,15 +44,12 @@ const swaggerHtml = `
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   try {
-    // Obtener la URL base de API Gateway
     const baseUrl = `https://${event.requestContext.domainName}/${event.requestContext.stage}`;
     
-    // Si se solicita el archivo swagger.yml
     if (event.path === '/docs/swagger.yml') {
       const swaggerPath = path.join(__dirname, '../../../infrastructure/config/swagger.yml');
       const swaggerContent = fs.readFileSync(swaggerPath, 'utf8');
       
-      // Actualizar las URLs de los servidores con la URL real de API Gateway
       const updatedSwagger = swaggerContent.replace(
         /url: https:\/\/api\.example\.com\/(dev|prod)/g,
         `url: ${baseUrl}`
@@ -68,7 +65,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       };
     }
     
-    // Para la página principal de Swagger UI
     const html = swaggerHtml.replace(
       'SWAGGER_URL',
       `${baseUrl}/docs/swagger.yml`

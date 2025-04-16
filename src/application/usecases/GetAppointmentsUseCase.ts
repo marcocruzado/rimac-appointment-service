@@ -13,24 +13,20 @@ export class GetAppointmentsUseCase {
 
   async execute(filters?: GetAppointmentsFilters): Promise<Appointment[]> {
     try {
-      // Si no hay filtros, obtener todas las citas
       if (!filters) {
         return this.appointmentRepository.findAll();
       }
 
       const { insuredId, countryIso } = filters;
 
-      // Si tenemos ambos filtros
       if (insuredId && countryIso) {
         return this.appointmentRepository.findByInsuredIdAndCountry(insuredId, countryIso);
       }
 
-      // Si solo tenemos insuredId
       if (insuredId) {
         return this.appointmentRepository.findByInsuredId(insuredId);
       }
 
-      // Si solo tenemos countryIso
       if (countryIso) {
         return this.appointmentRepository.findByCountry(countryIso);
       }

@@ -32,8 +32,7 @@ export class MySQLAppointmentRepository implements AppointmentRepository {
   }
 
   async findById(id: string): Promise<Appointment | null> {
-    // Buscar en ambas bases de datos
-    for (const countryIso of ['PE', 'CL'] as CountryISO[]) {
+      for (const countryIso of ['PE', 'CL'] as CountryISO[]) {
       const connection = this.connections[countryIso];
       const tableName = this.getTableName(countryIso);
 
@@ -62,8 +61,7 @@ export class MySQLAppointmentRepository implements AppointmentRepository {
   async findByInsuredId(insuredId: string): Promise<Appointment[]> {
     const appointments: Appointment[] = [];
     
-    // Buscar en ambas bases de datos
-    for (const countryIso of ['PE', 'CL'] as CountryISO[]) {
+      for (const countryIso of ['PE', 'CL'] as CountryISO[]) {
       const connection = this.connections[countryIso];
       const tableName = this.getTableName(countryIso);
 
@@ -139,7 +137,6 @@ export class MySQLAppointmentRepository implements AppointmentRepository {
   async findAll(): Promise<Appointment[]> {
     const appointments: Appointment[] = [];
     
-    // Buscar en ambas bases de datos
     for (const countryIso of ['PE', 'CL'] as CountryISO[]) {
       const connection = this.connections[countryIso];
       const tableName = this.getTableName(countryIso);

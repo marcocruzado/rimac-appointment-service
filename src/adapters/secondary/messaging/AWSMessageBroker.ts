@@ -2,29 +2,13 @@ import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
 import { Appointment } from '../../../domain/entities/Appointment';
 import { MessageBroker } from '../../../domain/ports/secondary/MessageBroker';
-
-/**
- * Implementación del broker de mensajes usando AWS
- * Adaptador secundario que implementa las operaciones de mensajería
- */
 export class AWSMessageBroker implements MessageBroker {
-  /**
-   * Constructor del broker
-   * @param snsClient Cliente de SNS
-   * @param eventBridgeClient Cliente de EventBridge
-   */
+
   constructor(
     private readonly snsClient: SNSClient,
     private readonly eventBridgeClient: EventBridgeClient
   ) {}
 
-  /**
-   * Publica un mensaje con los datos de la cita en SNS
-   * @param topicArn ARN del tema SNS
-   * @param appointment La cita a publicar
-   * @param attributes Atributos adicionales para el mensaje
-   * @returns Promesa con el resultado de la operación
-   */
   async publish(topicArn: string, appointment: Appointment, attributes?: Record<string, string>): Promise<void> {
     const messageAttributes: Record<string, { DataType: string; StringValue: string }> = {};
     
@@ -44,14 +28,6 @@ export class AWSMessageBroker implements MessageBroker {
     }));
   }
 
-  /**
-   * Envía un evento al bus de eventos de EventBridge
-   * @param eventBusName Nombre del bus de eventos
-   * @param source Fuente del evento
-   * @param detailType Tipo de detalle del evento
-   * @param appointment Datos de la cita para el evento
-   * @returns Promesa con el resultado de la operación
-   */
   async sendEvent(
     eventBusName: string, 
     source: string, 

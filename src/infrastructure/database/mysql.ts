@@ -4,7 +4,6 @@ import { CountryISO } from '../../domain/entities/Appointment';
 export async function createMySQLConnections(): Promise<{ [key: string]: mysql.Connection }> {
   const connections: { [key: string]: mysql.Connection } = {};
 
-  // Configuración para Perú
   const peConfig = {
     host: process.env.MYSQL_HOST_PE,
     user: process.env.MYSQL_USER_PE,
@@ -13,7 +12,6 @@ export async function createMySQLConnections(): Promise<{ [key: string]: mysql.C
     port: Number(process.env.MYSQL_PORT_PE) || 3306
   };
 
-  // Configuración para Chile
   const clConfig = {
     host: process.env.MYSQL_HOST_CL,
     user: process.env.MYSQL_USER_CL,
@@ -23,7 +21,6 @@ export async function createMySQLConnections(): Promise<{ [key: string]: mysql.C
   };
 
   try {
-    // Crear conexiones de manera asíncrona
     connections[CountryISO.PE] = await mysql.createConnection(peConfig);
     connections[CountryISO.CL] = await mysql.createConnection(clConfig);
 

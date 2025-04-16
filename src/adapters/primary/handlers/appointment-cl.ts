@@ -6,7 +6,6 @@ import { SNSMessageBroker } from '../../../infrastructure/messaging/SNSMessageBr
 import { ProcessAppointmentUseCase } from '../../../application/usecases/ProcessAppointmentUseCase';
 import { SNSClient } from '@aws-sdk/client-sns';
 
-// Configuración de la base de datos MySQL para Chile
 const dbConfig = {
   host: process.env.MYSQL_CL_HOST || 'localhost',
   user: process.env.MYSQL_CL_USER || 'user',
@@ -29,7 +28,6 @@ async function initializeServices() {
   }
 }
 
-// Handler para procesar eventos SQS
 export const handler = async (event: SQSEvent): Promise<void> => {
   try {
     await initializeServices();

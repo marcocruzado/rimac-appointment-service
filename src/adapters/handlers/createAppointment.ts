@@ -8,7 +8,6 @@ import { MySQLAppointmentRepository } from '../../infrastructure/repositories/My
 import { SNSMessageBroker } from '../../infrastructure/messaging/SNSMessageBroker';
 import { SNSClient } from '@aws-sdk/client-sns';
 
-// Configuración de conexiones MySQL
 const connections: { [key: string]: mysql.Connection } = {};
 
 const createAppointmentHandler: APIGatewayProxyHandler = async (event) => {
@@ -16,7 +15,6 @@ const createAppointmentHandler: APIGatewayProxyHandler = async (event) => {
     const data = event.body as unknown as CreateAppointmentDto;
 
     console.error(data)
-    // Validar datos requeridos
     if (!data.insuredId || !data.scheduleId || !data.countryIso) {
       return {
         statusCode: 400,
@@ -26,7 +24,6 @@ const createAppointmentHandler: APIGatewayProxyHandler = async (event) => {
       };
     }
 
-    // Validar país
     if (!['PE', 'CL'].includes(data.countryIso)) {
       return {
         statusCode: 400,
@@ -36,7 +33,6 @@ const createAppointmentHandler: APIGatewayProxyHandler = async (event) => {
       };
     }
 
-    // Crear conexiones si no existen
     if (!connections['PE']) {
       connections['PE'] = await mysql.createConnection({
         host: process.env.MYSQL_HOST_PE,
@@ -55,13 +51,11 @@ const createAppointmentHandler: APIGatewayProxyHandler = async (event) => {
       });
     }
 
-    // Crear instancias
     const repository = new MySQLAppointmentRepository(connections);
     const snsClient = new SNSClient({});
     const messageBroker = new SNSMessageBroker(snsClient);
     const useCase = new CreateAppointmentUseCase(repository, messageBroker);
 
-    // Ejecutar caso de uso
     const appointment = await useCase.execute(data);
 
     return {
@@ -81,6 +75,5 @@ const createAppointmentHandler: APIGatewayProxyHandler = async (event) => {
   }
 };
 
-// Agregar middleware para parsear el body JSON
 export const handler = middy(createAppointmentHandler)
   .use(jsonBodyParser()); 

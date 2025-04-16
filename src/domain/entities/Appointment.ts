@@ -1,14 +1,9 @@
-/**
- * Representación de los países soportados
- */
+
 export enum CountryISO {
   PE = 'PE',
   CL = 'CL'
 }
 
-/**
- * Representación de los estados posibles de una cita médica
- */
 export enum AppointmentStatus {
   PENDING = 'PENDING',
   CONFIRMED = 'CONFIRMED',
@@ -16,18 +11,14 @@ export enum AppointmentStatus {
   COMPLETED = 'COMPLETED'
 }
 
-/**
- * DTO para la creación de citas médicas
- */
+
 export interface CreateAppointmentDto {
   insuredId: string;
   scheduleId: string;
   countryIso: CountryISO;
 }
 
-/**
- * DTO para la respuesta de citas médicas
- */
+
 export interface AppointmentDTO {
   id: string;
   insuredId: string;
@@ -38,10 +29,7 @@ export interface AppointmentDTO {
   updatedAt: string;
 }
 
-/**
- * Entidad de dominio para la cita médica
- * Representa la estructura principal del negocio
- */
+
 export class Appointment {
   constructor(
     public readonly id: string,
