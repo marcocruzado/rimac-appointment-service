@@ -1,4 +1,4 @@
-import { Appointment } from '../../entities/Appointment';
+import { Appointment, CountryISO } from '../../entities/Appointment';
 
 /**
  * Puerto secundario para la persistencia de citas médicas
@@ -25,6 +25,27 @@ export interface AppointmentRepository {
    * @returns Promesa con la lista de citas
    */
   findByInsuredId(insuredId: string): Promise<Appointment[]>;
+
+  /**
+   * Busca todas las citas de un país específico
+   * @param countryIso Código ISO del país (PE o CL)
+   * @returns Promesa con la lista de citas
+   */
+  findByCountry(countryIso: CountryISO): Promise<Appointment[]>;
+
+  /**
+   * Busca todas las citas de un asegurado en un país específico
+   * @param insuredId ID del asegurado
+   * @param countryIso Código ISO del país (PE o CL)
+   * @returns Promesa con la lista de citas
+   */
+  findByInsuredIdAndCountry(insuredId: string, countryIso: CountryISO): Promise<Appointment[]>;
+
+  /**
+   * Obtiene todas las citas
+   * @returns Promesa con la lista de todas las citas
+   */
+  findAll(): Promise<Appointment[]>;
   
   /**
    * Actualiza el estado de una cita

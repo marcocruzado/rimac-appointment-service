@@ -1,5 +1,6 @@
 import { Appointment } from '../../domain/entities/Appointment';
 import { AppointmentRepository } from '../../domain/ports/secondary/AppointmentRepository';
+import { MessageBroker } from '../../domain/ports/secondary/MessageBroker';
 
 /**
  * Caso de uso para completar el procesamiento de una cita médica
@@ -9,9 +10,11 @@ export class CompleteAppointmentUseCase {
   /**
    * Constructor del caso de uso
    * @param appointmentRepository Repositorio de citas
+   * @param messageBroker Broker de mensajes
    */
   constructor(
-    private readonly appointmentRepository: AppointmentRepository
+    private readonly appointmentRepository: AppointmentRepository,
+    private readonly messageBroker: MessageBroker
   ) {}
 
   /**
@@ -21,18 +24,25 @@ export class CompleteAppointmentUseCase {
    */
   async execute(appointmentId: string): Promise<Appointment> {
     try {
-      // Obtener la cita de DynamoDB
+      // Obtener la cita
       const appointment = await this.appointmentRepository.findById(appointmentId);
       
       if (!appointment) {
         throw new Error(`Cita no encontrada con ID: ${appointmentId}`);
       }
       
-      // Actualizar el estado a COMPLETED
+      // Completar la cita
       appointment.complete();
       
-      // Guardar la cita actualizada
+      // Actualizar en la base de datos
       const updatedAppointment = await this.appointmentRepository.update(appointment);
+      
+      // Publicar evento de completado
+      await this.messageBroker.publish(
+        'appointment.completed',
+        updatedAppointment,
+        { countryIso: updatedAppointment.countryIso }
+      );
       
       return updatedAppointment;
     } catch (error) {

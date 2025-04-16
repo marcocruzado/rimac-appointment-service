@@ -1,4 +1,9 @@
-import { Appointment, CreateAppointmentDto } from '../../entities/Appointment';
+import { Appointment, CountryISO, CreateAppointmentDto } from '../../entities/Appointment';
+
+export interface GetAppointmentsFilters {
+  insuredId?: string;
+  countryIso?: CountryISO;
+}
 
 /**
  * Puerto primario que define los servicios de citas médicas
@@ -13,11 +18,11 @@ export interface AppointmentService {
   createAppointment(request: CreateAppointmentDto): Promise<Appointment>;
   
   /**
-   * Obtiene todas las citas de un asegurado
-   * @param insuredId ID del asegurado
+   * Obtiene citas médicas con filtros opcionales
+   * @param filters Filtros opcionales (insuredId y/o countryIso)
    * @returns Promesa con la lista de citas
    */
-  getAppointmentsByInsured(insuredId: string): Promise<Appointment[]>;
+  getAppointments(filters?: GetAppointmentsFilters): Promise<Appointment[]>;
   
   /**
    * Procesa una cita para un país específico (PE o CL)

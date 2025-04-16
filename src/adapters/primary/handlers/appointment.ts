@@ -1,49 +1,47 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { SNSClient } from '@aws-sdk/client-sns';
-import { EventBridgeClient } from '@aws-sdk/client-eventbridge';
 import middy from '@middy/core';
 import jsonBodyParser from '@middy/http-json-body-parser';
 import { AppointmentController } from '../controllers/AppointmentController';
 import { AppointmentServiceImpl } from '../../../application/services/AppointmentServiceImpl';
 import { CreateAppointmentUseCase } from '../../../application/usecases/CreateAppointmentUseCase';
-import { GetAppointmentsByInsuredUseCase } from '../../../application/usecases/GetAppointmentsByInsuredUseCase';
+import { GetAppointmentsUseCase } from '../../../application/usecases/GetAppointmentsUseCase';
 import { ProcessAppointmentUseCase } from '../../../application/usecases/ProcessAppointmentUseCase';
 import { CompleteAppointmentUseCase } from '../../../application/usecases/CompleteAppointmentUseCase';
-import { DynamoDBAppointmentRepository } from '../../secondary/repositories/DynamoDBAppointmentRepository';
-import { AWSMessageBroker } from '../../secondary/messaging/AWSMessageBroker'; 
+import { MySQLAppointmentRepository } from '../../../infrastructure/repositories/MySQLAppointmentRepository';
+import { SNSMessageBroker } from '../../../infrastructure/messaging/SNSMessageBroker';
+import { createMySQLConnections } from '../../../infrastructure/database/mysql';
 
-// Inicialización de clientes de AWS
-const dynamoClient = new DynamoDBClient({});
-const dynamoDBClient = DynamoDBDocumentClient.from(dynamoClient);
+// Inicialización de clientes AWS
 const snsClient = new SNSClient({});
-const eventBridgeClient = new EventBridgeClient({});
 
-// Obtener variables de entorno
-const tableName = process.env.APPOINTMENTS_TABLE || 'appointments';
-const snsTopic = process.env.SNS_TOPIC_ARN || '';
-const eventBusName = process.env.EVENT_BUS_NAME || '';
+let appointmentController: AppointmentController;
 
-// Inicialización de adaptadores secundarios
-const appointmentRepository = new DynamoDBAppointmentRepository(dynamoDBClient, tableName);
-const messageBroker = new AWSMessageBroker(snsClient, eventBridgeClient);
+// Función para inicializar los servicios
+async function initializeServices() {
+  if (!appointmentController) {
+    // Inicialización de adaptadores secundarios
+    const connections = await createMySQLConnections();
+    const appointmentRepository = new MySQLAppointmentRepository(connections);
+    const messageBroker = new SNSMessageBroker(snsClient);
 
-// Inicialización de casos de uso
-const createAppointmentUseCase = new CreateAppointmentUseCase(appointmentRepository as any, messageBroker);  
-const getAppointmentsByInsuredUseCase = new GetAppointmentsByInsuredUseCase(appointmentRepository);
-// Nota: Estos casos de uso se inicializan con valores mock ya que no se utilizan directamente en este handler
-const processAppointmentUseCase = new ProcessAppointmentUseCase({} as any, {} as any);
-const completeAppointmentUseCase = new CompleteAppointmentUseCase(appointmentRepository);
+    // Inicialización de casos de uso
+    const createAppointmentUseCase = new CreateAppointmentUseCase(appointmentRepository, messageBroker);
+    const getAppointmentsUseCase = new GetAppointmentsUseCase(appointmentRepository);
+    const processAppointmentUseCase = new ProcessAppointmentUseCase(appointmentRepository, messageBroker);
+    const completeAppointmentUseCase = new CompleteAppointmentUseCase(appointmentRepository, messageBroker);
 
-// Inicialización del servicio y controlador
-const appointmentService = new AppointmentServiceImpl(
-  createAppointmentUseCase,
-  getAppointmentsByInsuredUseCase,
-  processAppointmentUseCase,
-  completeAppointmentUseCase
-);
-const appointmentController = new AppointmentController(appointmentService);
+    // Inicialización del servicio y controlador
+    const appointmentService = new AppointmentServiceImpl(
+      createAppointmentUseCase,
+      getAppointmentsUseCase,
+      processAppointmentUseCase,
+      completeAppointmentUseCase
+    );
+
+    appointmentController = new AppointmentController(appointmentService);
+  }
+}
 
 /**
  * Manejador para las solicitudes HTTP y eventos SQS
@@ -87,12 +85,11 @@ async function handleSQSEvent(event: SQSEvent): Promise<void> {
   for (const record of event.Records) {
     try {
       const body = JSON.parse(record.body);
-      const detail = JSON.parse(body.detail);
+      const detail = JSON.parse(body.Message);
       
-      // Completar la cita en DynamoDB
-      await appointmentService.completeAppointment(detail.id);
+      await appointmentController.processConfirmation(detail.appointment.id);
       
-      console.log(`Cita completada exitosamente: ${detail.id}`);
+      console.log(`Cita completada exitosamente: ${detail.appointment.id}`);
     } catch (error) {
       console.error('Error al procesar evento SQS:', error);
     }
@@ -105,30 +102,34 @@ async function handleSQSEvent(event: SQSEvent): Promise<void> {
  * @returns Respuesta HTTP
  */
 async function handleHTTPEvent(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-  // Manejar solicitud de creación de cita
-  if (event.httpMethod === 'POST' && event.path === '/appointments') {
-    return await appointmentController.createAppointment(event.body as any);
-  }
-  
-  // Manejar solicitud de obtención de citas por asegurado
-  if (event.httpMethod === 'GET' && event.path.startsWith('/appointments/')) {
-    const insuredId = event.pathParameters?.insuredId;
-    
-    if (!insuredId) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ message: 'ID de asegurado requerido' })
-      };
+  try {
+    await initializeServices();
+
+    // Manejar solicitud de creación de cita
+    if (event.httpMethod === 'POST' && event.path === '/appointments') {
+      return await appointmentController.createAppointment(event);
     }
     
-    return await appointmentController.getAppointmentsByInsured(event);
+    // Manejar solicitud de obtención de citas
+    if (event.httpMethod === 'GET' && event.path === '/appointments') {
+      return await appointmentController.getAppointments(event);
+    }
+    
+    // Ruta no encontrada
+    return {
+      statusCode: 404,
+      body: JSON.stringify({ message: 'Ruta no encontrada' })
+    };
+  } catch (error) {
+    console.error('Error en el handler:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ 
+        error: 'Error interno del servidor',
+        message: error instanceof Error ? error.message : 'Error desconocido'
+      })
+    };
   }
-  
-  // Ruta no encontrada
-  return {
-    statusCode: 404,
-    body: JSON.stringify({ message: 'Ruta no encontrada' })
-  };
 }
 
 // Middleware para parsear el cuerpo JSON

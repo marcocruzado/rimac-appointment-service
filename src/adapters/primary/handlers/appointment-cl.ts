@@ -1,69 +1,53 @@
 import { SQSEvent } from 'aws-lambda';
-import { EventBridgeClient } from '@aws-sdk/client-eventbridge';
 import * as mysql from 'mysql2/promise';
-import { Appointment, AppointmentDTO, CountryISO, AppointmentStatus } from '../../../domain/entities/Appointment';
-import { AWSMessageBroker } from '../../secondary/messaging/AWSMessageBroker';
+import { Appointment, CountryISO } from '../../../domain/entities/Appointment';
+import { MySQLAppointmentRepository } from '../../../infrastructure/repositories/MySQLAppointmentRepository';
+import { SNSMessageBroker } from '../../../infrastructure/messaging/SNSMessageBroker';
 import { ProcessAppointmentUseCase } from '../../../application/usecases/ProcessAppointmentUseCase';
-import { MySQLCountryAppointmentRepository } from '../../secondary/repositories/MYSQLCountryRepository';
+import { SNSClient } from '@aws-sdk/client-sns';
 
 // Configuración de la base de datos MySQL para Chile
 const dbConfig = {
   host: process.env.MYSQL_CL_HOST || 'localhost',
   user: process.env.MYSQL_CL_USER || 'user',
   password: process.env.MYSQL_CL_PASSWORD || 'password',
-  database: process.env.MYSQL_CL_DATABASE || 'rimac_cl',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+  database: process.env.MYSQL_CL_DATABASE || 'rimac_cl'
 };
 
-// Cliente de EventBridge
-const eventBridgeClient = new EventBridgeClient();
-const eventBusName = process.env.EVENT_BUS_NAME || '';
+let repository: MySQLAppointmentRepository;
+let processAppointmentUseCase: ProcessAppointmentUseCase;
 
-// Crear pool de conexiones MySQL
-const pool = mysql.createPool(dbConfig);
+async function initializeServices() {
+  if (!repository) {
+    const connection = await mysql.createConnection(dbConfig);
+    const connections = { [CountryISO.CL]: connection };
+    repository = new MySQLAppointmentRepository(connections);
+    
+    const snsClient = new SNSClient({});
+    const messageBroker = new SNSMessageBroker(snsClient);
+    processAppointmentUseCase = new ProcessAppointmentUseCase(repository, messageBroker);
+  }
+}
 
-// Inicializar adaptadores
-  const clRepository = new MySQLCountryAppointmentRepository(pool, 'appointments_cl');
-const messageBroker = new AWSMessageBroker({} as any, eventBridgeClient);
-
-// Inicializar caso de uso
-const processAppointmentUseCase = new ProcessAppointmentUseCase(clRepository, messageBroker);
-
-/**
- * Handler para procesar citas médicas en Chile
- * @param event Evento SQS con los datos de la cita
- */
+// Handler para procesar eventos SQS
 export const handler = async (event: SQSEvent): Promise<void> => {
   try {
-    console.log('Procesando evento para Chile:', event);
-    
+    await initializeServices();
+
     for (const record of event.Records) {
-      try {
-        // Parsear el mensaje de SNS
-        const snsMessage = JSON.parse(record.body);
-        console.log('Mensaje SNS:', snsMessage);
-        
-        // Obtener los datos de la cita
-        const appointmentData = JSON.parse(snsMessage.Message) as AppointmentDTO;
-        console.log('Datos de la cita:', appointmentData);
-        
-        // Convertir a entidad de dominio
-        const appointment = new Appointment(appointmentData.id, appointmentData.insuredId, appointmentData.scheduleId.toString()  , appointmentData.countryISO as CountryISO, appointmentData.status as AppointmentStatus, new Date(appointmentData.createdAt), new Date(appointmentData.updatedAt)); 
-        
-        // Procesar la cita en la base de datos de Chile
-        await processAppointmentUseCase.execute(appointment);
-        
-        console.log(`Cita procesada exitosamente en Chile: ${appointment.id}`);
-      } catch (error) {
-        console.error('Error al procesar registro SQS para Chile:', error);
+      const body = JSON.parse(record.body);
+      const appointment = Appointment.fromDTO(JSON.parse(body.Message).appointment);
+      
+      if (appointment.countryIso !== CountryISO.CL) {
+        console.log(`Ignorando cita de país ${appointment.countryIso}`);
+        continue;
       }
+
+      await processAppointmentUseCase.execute(appointment);
+      console.log(`Cita procesada exitosamente: ${appointment.id}`);
     }
   } catch (error) {
-    console.error('Error general en el handler de Chile:', error);
-  } finally {
-    // Cerrar la conexión al finalizar
-    await pool.end();
+    console.error('Error al procesar eventos:', error);
+    throw error;
   }
 };

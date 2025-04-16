@@ -1,5 +1,5 @@
 import { Appointment } from '../../domain/entities/Appointment';
-import { CountryAppointmentRepository } from '../../domain/ports/secondary/CountryAppointmentRepository';
+import { AppointmentRepository } from '../../domain/ports/secondary/AppointmentRepository';
 import { MessageBroker } from '../../domain/ports/secondary/MessageBroker';
 
 /**
@@ -9,11 +9,11 @@ import { MessageBroker } from '../../domain/ports/secondary/MessageBroker';
 export class ProcessAppointmentUseCase {
   /**
    * Constructor del caso de uso
-   * @param countryRepository Repositorio específico del país
+   * @param appointmentRepository Repositorio específico del país
    * @param messageBroker Broker de mensajes
    */
   constructor(
-    private readonly countryRepository: CountryAppointmentRepository,
+    private readonly appointmentRepository: AppointmentRepository,
     private readonly messageBroker: MessageBroker
   ) {}
 
@@ -24,24 +24,23 @@ export class ProcessAppointmentUseCase {
    */
   async execute(appointment: Appointment): Promise<boolean> {
     try {
-      // Guardar en la base de datos del país correspondiente (MySQL)
-      const success = await this.countryRepository.saveAppointment(appointment);
+      // Confirmar la cita
+      appointment.confirm();
       
-      if (success) {
-        // Enviar evento de confirmación a EventBridge
-        await this.messageBroker.sendEvent(
-          'appointment-event-bus', 
-          'appointment.service', 
-          'AppointmentConfirmed', 
-          appointment
-        );
-        return true;
-      }
+      // Actualizar en la base de datos
+      await this.appointmentRepository.update(appointment);
       
-      return false;
+      // Publicar evento de confirmación
+      await this.messageBroker.publish(
+        'appointment.confirmed',
+        appointment,
+        { countryIso: appointment.countryIso }
+      );
+      
+      return true;
     } catch (error) {
       console.error(`Error al procesar la cita ${appointment.id}:`, error);
-      throw error;
+      return false;
     }
   }
 }

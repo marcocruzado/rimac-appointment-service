@@ -6,6 +6,7 @@ import { CreateAppointmentDto } from '../../domain/entities/Appointment';
 import { CreateAppointmentUseCase } from '../../application/usecases/CreateAppointmentUseCase';
 import { MySQLAppointmentRepository } from '../../infrastructure/repositories/MySQLAppointmentRepository';
 import { SNSMessageBroker } from '../../infrastructure/messaging/SNSMessageBroker';
+import { SNSClient } from '@aws-sdk/client-sns';
 
 // Configuración de conexiones MySQL
 const connections: { [key: string]: mysql.Connection } = {};
@@ -56,8 +57,9 @@ const createAppointmentHandler: APIGatewayProxyHandler = async (event) => {
 
     // Crear instancias
     const repository = new MySQLAppointmentRepository(connections);
-    const messageBroker = new SNSMessageBroker(process.env.SNS_TOPIC_ARN || '');
-    const useCase = new CreateAppointmentUseCase(repository,messageBroker);
+    const snsClient = new SNSClient({});
+    const messageBroker = new SNSMessageBroker(snsClient);
+    const useCase = new CreateAppointmentUseCase(repository, messageBroker);
 
     // Ejecutar caso de uso
     const appointment = await useCase.execute(data);

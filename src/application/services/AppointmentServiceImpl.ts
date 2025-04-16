@@ -1,7 +1,7 @@
-import { Appointment, CreateAppointmentDto } from '../../domain/entities/Appointment';
-import { AppointmentService } from '../../domain/ports/primary/AppointmentService';
+import { Appointment, CountryISO, CreateAppointmentDto } from '../../domain/entities/Appointment';
+import { AppointmentService, GetAppointmentsFilters } from '../../domain/ports/primary/AppointmentService';
 import { CreateAppointmentUseCase } from '../usecases/CreateAppointmentUseCase';
-import { GetAppointmentsByInsuredUseCase } from '../usecases/GetAppointmentsByInsuredUseCase';
+import { GetAppointmentsUseCase } from '../usecases/GetAppointmentsUseCase';
 import { ProcessAppointmentUseCase } from '../usecases/ProcessAppointmentUseCase';
 import { CompleteAppointmentUseCase } from '../usecases/CompleteAppointmentUseCase';
 
@@ -13,13 +13,13 @@ export class AppointmentServiceImpl implements AppointmentService {
   /**
    * Constructor del servicio de citas
    * @param createAppointmentUseCase Caso de uso para crear citas
-   * @param getAppointmentsByInsuredUseCase Caso de uso para obtener citas
+   * @param getAppointmentsUseCase Caso de uso para obtener citas
    * @param processAppointmentUseCase Caso de uso para procesar citas
    * @param completeAppointmentUseCase Caso de uso para completar citas
    */
   constructor(
     private readonly createAppointmentUseCase: CreateAppointmentUseCase,
-    private readonly getAppointmentsByInsuredUseCase: GetAppointmentsByInsuredUseCase,
+    private readonly getAppointmentsUseCase: GetAppointmentsUseCase,
     private readonly processAppointmentUseCase: ProcessAppointmentUseCase,
     private readonly completeAppointmentUseCase: CompleteAppointmentUseCase
   ) {}
@@ -35,11 +35,11 @@ export class AppointmentServiceImpl implements AppointmentService {
 
   /**
    * Obtiene todas las citas de un asegurado
-   * @param insuredId ID del asegurado
+   * @param filters Filtros para obtener citas
    * @returns Promesa con la lista de citas
    */
-  async getAppointmentsByInsured(insuredId: string): Promise<Appointment[]> {
-    return this.getAppointmentsByInsuredUseCase.execute(insuredId);
+  async getAppointments(filters?: GetAppointmentsFilters): Promise<Appointment[]> {
+    return this.getAppointmentsUseCase.execute(filters);
   }
 
   /**

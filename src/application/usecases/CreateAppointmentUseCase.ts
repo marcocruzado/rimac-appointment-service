@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Appointment, AppointmentStatus, CreateAppointmentDto, CountryISO } from '../../domain/entities/Appointment';
-import { AppointmentRepository } from '../../domain/repositories/AppointmentRepository';
+import { Appointment, AppointmentStatus, CreateAppointmentDto } from '../../domain/entities/Appointment';
+import { AppointmentRepository } from '../../domain/ports/secondary/AppointmentRepository';
 import { MessageBroker } from '../../domain/ports/secondary/MessageBroker';
 
 /**
@@ -26,10 +26,7 @@ export class CreateAppointmentUseCase {
   async execute(data: CreateAppointmentDto): Promise<Appointment> {
     try {
       // Verificar si el asegurado ya tiene citas pendientes
-      const existingAppointments = await this.appointmentRepository.findByInsuredId(
-        data.insuredId,
-        data.countryIso
-      );
+      const existingAppointments = await this.appointmentRepository.findByInsuredId(data.insuredId);
 
       const hasPendingAppointment = existingAppointments.some(
         appointment => appointment.status === AppointmentStatus.PENDING
@@ -44,11 +41,14 @@ export class CreateAppointmentUseCase {
         uuidv4(),
         data.insuredId,
         data.scheduleId,
-        data.countryIso
+        data.countryIso,
+        AppointmentStatus.PENDING,
+        new Date(),
+        new Date()
       );
 
       // Guardar en la base de datos
-      const savedAppointment = await this.appointmentRepository.create(data);
+      const savedAppointment = await this.appointmentRepository.save(appointment);
 
       // Publicar evento
       await this.messageBroker.publish(

@@ -1,53 +1,52 @@
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
-import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
 import { MessageBroker } from '../../domain/ports/secondary/MessageBroker';
 import { Appointment } from '../../domain/entities/Appointment';
 
 export class SNSMessageBroker implements MessageBroker {
-  private sns: SNSClient;
-  private eventBridge: EventBridgeClient;
+  constructor(private readonly snsClient: SNSClient) {}
 
-  constructor(private readonly topicArn: string) {
-    this.sns = new SNSClient({ region: 'us-east-1' });
-    this.eventBridge = new EventBridgeClient({ region: 'us-east-1' });
-  }
-
-  async publish(event: string, data: any, attributes?: Record<string, string>): Promise<void> {
-    const params = {
-      TopicArn: this.topicArn,
-      Message: JSON.stringify({
-        event,
-        data,
+  async publish(
+    eventType: string,
+    appointment: Appointment,
+    attributes: Record<string, any>
+  ): Promise<void> {
+    try {
+      const message = {
+        eventType,
+        appointment: appointment.toDTO(),
+        attributes,
         timestamp: new Date().toISOString()
-      }),
-      MessageAttributes: attributes ? 
-        Object.entries(attributes).reduce((acc, [key, value]) => ({
-          ...acc,
-          [key]: {
-            DataType: 'String',
-            StringValue: value
-          }
-        }), {}) : undefined
-    };
+      };
 
-    await this.sns.send(new PublishCommand(params));
+      const command = new PublishCommand({
+        TopicArn: process.env.SNS_TOPIC_ARN,
+        Message: JSON.stringify(message),
+        MessageAttributes: {
+          eventType: {
+            DataType: 'String',
+            StringValue: eventType
+          },
+          countryIso: {
+            DataType: 'String',
+            StringValue: appointment.countryIso
+          }
+        }
+      });
+
+      await this.snsClient.send(command);
+    } catch (error) {
+      console.error('Error al publicar mensaje en SNS:', error);
+      throw error;
+    }
   }
 
   async sendEvent(
-    eventBus: string,
+    eventBusName: string,
     source: string,
     detailType: string,
-    appointment: Appointment
+    detail: any
   ): Promise<void> {
-    await this.eventBridge.send(new PutEventsCommand({
-      Entries: [
-        {
-          EventBusName: eventBus,
-          Source: source,
-          DetailType: detailType,
-          Detail: JSON.stringify(appointment)
-        }
-      ]
-    }));
+    // Esta implementación no es necesaria para SNS
+    throw new Error('Método no implementado para SNS');
   }
 } 

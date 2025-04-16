@@ -108,4 +108,39 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
       Key: { id }
     }));
   }
+
+  async findByCountry(countryIso: string): Promise<Appointment[]> {
+    const result = await this.dynamoDBClient.send(new QueryCommand({
+      TableName: this.tableName,
+      IndexName: 'countryIso-index',
+      KeyConditionExpression: 'countryIso = :countryIso',
+      ExpressionAttributeValues: {
+        ':countryIso': countryIso
+      }
+    }));
+    
+    return (result.Items || []).map(item => Appointment.fromDTO(item as AppointmentDTO));
+  }
+
+  async findByInsuredIdAndCountry(insuredId: string, countryIso: string): Promise<Appointment[]> {
+    const result = await this.dynamoDBClient.send(new QueryCommand({
+      TableName: this.tableName,
+      IndexName: 'insuredId-countryIso-index',
+      KeyConditionExpression: 'insuredId = :insuredId AND countryIso = :countryIso',
+      ExpressionAttributeValues: {
+        ':insuredId': insuredId,
+        ':countryIso': countryIso
+      }
+    }));
+    
+    return (result.Items || []).map(item => Appointment.fromDTO(item as AppointmentDTO));
+  }
+
+  async findAll(): Promise<Appointment[]> {
+    const result = await this.dynamoDBClient.send(new QueryCommand({
+      TableName: this.tableName
+    }));
+    
+    return (result.Items || []).map(item => Appointment.fromDTO(item as AppointmentDTO));
+  }
 }

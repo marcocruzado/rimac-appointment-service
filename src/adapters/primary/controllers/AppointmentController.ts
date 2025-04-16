@@ -1,6 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { CreateAppointmentDto } from '../../../domain/entities/Appointment';
 import { AppointmentService } from '../../../domain/ports/primary/AppointmentService';
+import { CountryISO } from '../../../domain/entities/Appointment';
 
 /**
  * Controlador para las operaciones de citas médicas mediante API Gateway
@@ -29,8 +30,8 @@ export class AppointmentController {
         };
       }
 
-      // Parsear el cuerpo de la solicitud
-      const request = JSON.parse(event.body) as CreateAppointmentDto;
+      // El body ya está parseado por el middleware jsonBodyParser
+      const request = event.body as unknown as CreateAppointmentDto;
       
       // Crear la cita
       const appointment = await this.appointmentService.createAppointment(request);
@@ -65,10 +66,8 @@ export class AppointmentController {
    */
   async getAppointmentsByInsured(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
     try {
-      // Obtener el ID del asegurado de los parámetros de ruta
       const insuredId = event.pathParameters?.insuredId;
       
-      // Validar que el ID del asegurado exista
       if (!insuredId) {
         return {
           statusCode: 400,
@@ -77,19 +76,14 @@ export class AppointmentController {
         };
       }
       
-      // Obtener las citas
-      const appointments = await this.appointmentService.getAppointmentsByInsured(insuredId);
+      const appointments = await this.appointmentService.getAppointments({ insuredId });
       
-      // Convertir a DTOs para la respuesta
-      const appointmentDTOs = appointments;
-      
-      // Devolver respuesta exitosa
       return {
         statusCode: 200,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           insuredId,
-          appointments: appointmentDTOs
+          appointments
         })
       };
     } catch (error) {
@@ -118,6 +112,60 @@ export class AppointmentController {
     } catch (error) {
       console.error(`Error al procesar confirmación para cita ${appointmentId}:`, error);
       return false;
+    }
+  }
+
+  /**
+   * Obtiene las citas médicas con filtros opcionales
+   * @param event Evento de API Gateway
+   * @returns Respuesta HTTP con la lista de citas
+   */
+  async getAppointments(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+    try {
+      const insuredId = event.queryStringParameters?.insuredId;
+      const countryIso = event.queryStringParameters?.countryIso as CountryISO | undefined;
+
+      // Validar país si se proporciona
+      if (countryIso && !['PE', 'CL'].includes(countryIso)) {
+        return {
+          statusCode: 400,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            error: 'País no válido',
+            message: 'El país debe ser PE o CL'
+          })
+        };
+      }
+
+      // Obtener las citas con los filtros proporcionados
+      const appointments = await this.appointmentService.getAppointments({
+        insuredId,
+        countryIso
+      });
+
+      // Devolver respuesta exitosa
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filters: {
+            insuredId,
+            countryIso
+          },
+          appointments
+        })
+      };
+    } catch (error) {
+      console.error('Error en getAppointments:', error);
+      
+      return {
+        statusCode: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'Error al procesar la solicitud',
+          message: error instanceof Error ? error.message : 'Error desconocido'
+        })
+      };
     }
   }
 }

@@ -1,30 +1,33 @@
 import { Appointment } from '../../entities/Appointment';
 
 /**
- * Puerto secundario para el broker de mensajes
- * Define el contrato para cualquier implementación de mensajería
+ * Puerto secundario para la mensajería
+ * Define el contrato para cualquier implementación de broker de mensajes
  */
 export interface MessageBroker {
   /**
    * Publica un mensaje en el broker
-   * @param event Nombre del evento
-   * @param data Datos a publicar
-   * @param attributes Atributos adicionales para el mensaje
+   * @param eventType Tipo de evento
+   * @param appointment Cita relacionada al evento
+   * @param attributes Atributos adicionales del mensaje
    */
-  publish(event: string, data: any, attributes?: Record<string, string>): Promise<void>;
-  
+  publish(
+    eventType: string,
+    appointment: Appointment,
+    attributes: Record<string, any>
+  ): Promise<void>;
+
   /**
    * Envía un evento al bus de eventos
-   * @param eventBus Nombre del bus de eventos
+   * @param eventBusName Nombre del bus de eventos
    * @param source Fuente del evento
    * @param detailType Tipo de detalle del evento
-   * @param appointment Datos de la cita para el evento
-   * @returns Promesa con el resultado de la operación
+   * @param detail Detalle del evento
    */
   sendEvent(
-    eventBus: string, 
-    source: string, 
-    detailType: string, 
-    appointment: Appointment
+    eventBusName: string,
+    source: string,
+    detailType: string,
+    detail: any
   ): Promise<void>;
 }
