@@ -1,0 +1,96 @@
+{
+	"info": {
+		"_postman_id": "53f31220-3a2b-44e5-840f-7e3124e413a9",
+		"name": "EndPoints APpointment",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "7879645",
+		"_collection_link": "https://planetary-astronaut-6616.postman.co/workspace/APIS~2b919cdb-8d74-45c9-a45c-066412027c38/collection/7879645-53f31220-3a2b-44e5-840f-7e3124e413a9?action=share&source=collection_link&creator=7879645"
+	},
+	"item": [
+		{
+			"name": "Create Appointment",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": " {  \r\n    \"insuredId\": \"12345\",\r\n    \"scheduleId\": \"SCH001\",\r\n    \"countryIso\": \"PE\"\r\n }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://fv7kkco9lg.execute-api.us-east-1.amazonaws.com/dev/appointments",
+					"protocol": "https",
+					"host": [
+						"fv7kkco9lg",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"dev",
+						"appointments"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Appointment",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": " {  \r\n    \"insuredId\": \"12345\",\r\n    \"scheduleId\": \"SCH001\",\r\n    \"countryIso\": \"PE\"\r\n }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://fv7kkco9lg.execute-api.us-east-1.amazonaws.com/dev/appointments?insuredId=99999",
+					"protocol": "https",
+					"host": [
+						"fv7kkco9lg",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"dev",
+						"appointments"
+					],
+					"query": [
+						{
+							"key": "insuredId",
+							"value": "99999"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
