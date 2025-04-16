@@ -23,6 +23,7 @@ package:
     - "!.husky/**"
     - "!.vscode/**"
     - "!**/*.test.ts"
+    - "src/infrastructure/config/swagger.yml"
 
 provider:
   name: aws
@@ -120,6 +121,18 @@ functions:
     events:
       - sqs:
           arn: !GetAtt AppointmentQueueCL.Arn
+
+  swaggerUI:
+    handler: src/adapters/primary/handlers/swagger.handler
+    events:
+      - http:
+          path: /docs
+          method: get
+          cors: true
+      - http:
+          path: /docs/{proxy+}
+          method: any
+          cors: true
 
 resources:
   Resources:

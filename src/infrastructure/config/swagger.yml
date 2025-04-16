@@ -1,0 +1,195 @@
+openapi: 3.0.0
+info:
+  title: RIMAC Appointment Service API
+  description: API para la gestión de citas médicas en Perú y Chile
+  version: 1.0.0
+  contact:
+    name: RIMAC Seguros
+servers:
+  - url: https://api.example.com/dev
+    description: Servidor de desarrollo
+  - url: https://api.example.com/prod
+    description: Servidor de producción
+
+paths:
+  /appointments:
+    post:
+      summary: Crear una nueva cita médica
+      description: Crea una nueva cita médica para un asegurado en el país especificado
+      tags:
+        - Citas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAppointmentRequest'
+      responses:
+        '201':
+          description: Cita creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateAppointmentResponse'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    get:
+      summary: Obtener citas médicas
+      description: Obtiene la lista de citas médicas según los filtros especificados
+      tags:
+        - Citas
+      parameters:
+        - name: insuredId
+          in: query
+          description: ID del asegurado
+          required: false
+          schema:
+            type: string
+        - name: countryIso
+          in: query
+          description: Código ISO del país (PE o CL)
+          required: false
+          schema:
+            type: string
+            enum: [PE, CL]
+      responses:
+        '200':
+          description: Lista de citas obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAppointmentsResponse'
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    CreateAppointmentRequest:
+      type: object
+      required:
+        - insuredId
+        - scheduleId
+        - countryIso
+      properties:
+        insuredId:
+          type: string
+          description: ID del asegurado
+          example: "12345"
+        scheduleId:
+          type: string
+          description: ID del horario seleccionado
+          example: "SCH001"
+        countryIso:
+          type: string
+          description: Código ISO del país
+          enum: [PE, CL]
+          example: "PE"
+
+    CreateAppointmentResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Agendamiento en proceso"
+        appointment:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: "123e4567-e89b-12d3-a456-426614174000"
+            insuredId:
+              type: string
+              example: "12345"
+            scheduleId:
+              type: string
+              example: "SCH001"
+            countryIso:
+              type: string
+              example: "PE"
+            status:
+              type: string
+              enum: [PENDING, CONFIRMED, CANCELLED]
+              example: "PENDING"
+            createdAt:
+              type: string
+              format: date-time
+              example: "2024-03-20T10:00:00Z"
+            updatedAt:
+              type: string
+              format: date-time
+              example: "2024-03-20T10:00:00Z"
+
+    GetAppointmentsResponse:
+      type: object
+      properties:
+        filters:
+          type: object
+          properties:
+            insuredId:
+              type: string
+              example: "12345"
+            countryIso:
+              type: string
+              example: "PE"
+        appointments:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: "123e4567-e89b-12d3-a456-426614174000"
+              insuredId:
+                type: string
+                example: "12345"
+              scheduleId:
+                type: string
+                example: "SCH001"
+              countryIso:
+                type: string
+                example: "PE"
+              status:
+                type: string
+                enum: [PENDING, CONFIRMED, CANCELLED]
+                example: "PENDING"
+              createdAt:
+                type: string
+                format: date-time
+                example: "2024-03-20T10:00:00Z"
+              updatedAt:
+                type: string
+                format: date-time
+                example: "2024-03-20T10:00:00Z"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "ValidationError"
+        message:
+          type: string
+          example: "Datos inválidos" 
