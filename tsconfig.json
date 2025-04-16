@@ -8,8 +8,13 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "outDir": ".build"
+    "outDir": ".build",
+    "lib": ["ES2020"],
+    "sourceMap": true,
+    "allowJs": true,
+    "noImplicitAny": true,
+    "isolatedModules": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", ".build"]
+  "exclude": ["node_modules", ".build", "**/*.test.ts"]
 }

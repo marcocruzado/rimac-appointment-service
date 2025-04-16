@@ -12,8 +12,9 @@ const connections: { [key: string]: mysql.Connection } = {};
 
 const createAppointmentHandler: APIGatewayProxyHandler = async (event) => {
   try {
-    const data = JSON.parse(event.body || '{}') as CreateAppointmentDto;
+    const data = event.body as unknown as CreateAppointmentDto;
 
+    console.error(data)
     // Validar datos requeridos
     if (!data.insuredId || !data.scheduleId || !data.countryIso) {
       return {

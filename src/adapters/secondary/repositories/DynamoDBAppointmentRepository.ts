@@ -1,4 +1,5 @@
-import { DynamoDB } from 'aws-sdk';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, GetCommand, QueryCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { Appointment, AppointmentDTO } from '../../../domain/entities/Appointment';
 import { AppointmentRepository } from '../../../domain/ports/secondary/AppointmentRepository';
 
@@ -13,7 +14,7 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
    * @param tableName Nombre de la tabla en DynamoDB
    */
   constructor(
-    private readonly dynamoDBClient: DynamoDB.DocumentClient,
+    private readonly dynamoDBClient: DynamoDBDocumentClient,
     private readonly tableName: string
   ) {}
 
@@ -25,10 +26,10 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
   async save(appointment: Appointment): Promise<Appointment> {
     const appointmentDTO = appointment.toDTO();
     
-    await this.dynamoDBClient.put({
+    await this.dynamoDBClient.send(new PutCommand({
       TableName: this.tableName,
       Item: appointmentDTO
-    }).promise();
+    }));
     
     return appointment;
   }
@@ -39,10 +40,10 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
    * @returns Promesa con la cita encontrada o null
    */
   async findById(id: string): Promise<Appointment | null> {
-    const result = await this.dynamoDBClient.get({
+    const result = await this.dynamoDBClient.send(new GetCommand({
       TableName: this.tableName,
       Key: { id }
-    }).promise();
+    }));
     
     if (!result.Item) {
       return null;
@@ -57,14 +58,14 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
    * @returns Promesa con la lista de citas
    */
   async findByInsuredId(insuredId: string): Promise<Appointment[]> {
-    const result = await this.dynamoDBClient.query({
+    const result = await this.dynamoDBClient.send(new QueryCommand({
       TableName: this.tableName,
       IndexName: 'insuredId-index',
       KeyConditionExpression: 'insuredId = :insuredId',
       ExpressionAttributeValues: {
         ':insuredId': insuredId
       }
-    }).promise();
+    }));
     
     if (!result.Items || result.Items.length === 0) {
       return [];
@@ -81,7 +82,7 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
   async update(appointment: Appointment): Promise<Appointment> {
     const appointmentDTO = appointment.toDTO();
     
-    await this.dynamoDBClient.update({
+    await this.dynamoDBClient.send(new UpdateCommand({
       TableName: this.tableName,
       Key: { id: appointment.id },
       UpdateExpression: 'set #status = :status, updatedAt = :updatedAt',
@@ -92,7 +93,7 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
         ':status': appointmentDTO.status,
         ':updatedAt': appointmentDTO.updatedAt
       }
-    }).promise();
+    }));
     
     return appointment;
   }
@@ -102,9 +103,9 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.dynamoDBClient.delete({
+    await this.dynamoDBClient.send(new DeleteCommand({
       TableName: this.tableName,
       Key: { id }
-    }).promise();
+    }));
   }
 }

@@ -5,6 +5,8 @@ node_modules
 .env.local
 .serverless
 .vscode
+.build
+postman_collection.json
 
 
 

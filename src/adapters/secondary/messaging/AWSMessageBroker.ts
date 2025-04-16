@@ -1,4 +1,5 @@
-import { SNS, EventBridge } from 'aws-sdk';
+import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
+import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
 import { Appointment } from '../../../domain/entities/Appointment';
 import { MessageBroker } from '../../../domain/ports/secondary/MessageBroker';
 
@@ -13,8 +14,8 @@ export class AWSMessageBroker implements MessageBroker {
    * @param eventBridgeClient Cliente de EventBridge
    */
   constructor(
-    private readonly snsClient: SNS,
-    private readonly eventBridgeClient: EventBridge
+    private readonly snsClient: SNSClient,
+    private readonly eventBridgeClient: EventBridgeClient
   ) {}
 
   /**
@@ -25,7 +26,7 @@ export class AWSMessageBroker implements MessageBroker {
    * @returns Promesa con el resultado de la operación
    */
   async publish(topicArn: string, appointment: Appointment, attributes?: Record<string, string>): Promise<void> {
-    const messageAttributes: SNS.MessageAttributeMap = {};
+    const messageAttributes: Record<string, { DataType: string; StringValue: string }> = {};
     
     if (attributes) {
       Object.entries(attributes).forEach(([key, value]) => {
@@ -36,11 +37,11 @@ export class AWSMessageBroker implements MessageBroker {
       });
     }
     
-    await this.snsClient.publish({
+    await this.snsClient.send(new PublishCommand({
       TopicArn: topicArn,
       Message: JSON.stringify(appointment),
       MessageAttributes: messageAttributes
-    }).promise();
+    }));
   }
 
   /**
@@ -57,7 +58,7 @@ export class AWSMessageBroker implements MessageBroker {
     detailType: string, 
     appointment: Appointment
   ): Promise<void> {
-    await this.eventBridgeClient.putEvents({
+    await this.eventBridgeClient.send(new PutEventsCommand({
       Entries: [
         {
           EventBusName: eventBusName,
@@ -66,6 +67,6 @@ export class AWSMessageBroker implements MessageBroker {
           Detail: JSON.stringify(appointment)
         }
       ]
-    }).promise();
+    }));
   }
 }

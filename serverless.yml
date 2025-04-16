@@ -4,12 +4,38 @@ frameworkVersion: '3'
 
 useDotenv: true
 
+plugins:
+  - serverless-plugin-typescript
+  - serverless-offline
+  - serverless-dotenv-plugin
+
+package:
+  individually: true
+  patterns:
+    - "!node_modules/.prisma/**"
+    - "!node_modules/@prisma/**"
+    - "!tests/**"
+    - "!coverage/**"
+    - "!.build/**"
+    - "!.serverless/**"
+    - "!.git/**"
+    - "!.github/**"
+    - "!.husky/**"
+    - "!.vscode/**"
+    - "!**/*.test.ts"
+
 provider:
   name: aws
   runtime: nodejs18.x
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
+  deploymentBucket:
+    maxVersions: 5
+    blockPublicAccess: true
+    versioning: false
+  deploymentPrefix: serverless
   environment:
+    NODE_OPTIONS: '--enable-source-maps'
     MYSQL_HOST_PE: ${env:MYSQL_HOST_PE}
     MYSQL_USER_PE: ${env:MYSQL_USER_PE}
     MYSQL_PASSWORD_PE: ${env:MYSQL_PASSWORD_PE}
@@ -61,6 +87,7 @@ provider:
 functions:
   createAppointment:
     handler: src/adapters/handlers/createAppointment.handler
+    timeout: 30
     events:
       - http:
           path: /appointments
@@ -221,12 +248,6 @@ resources:
         Queues:
           - !Ref ConfirmationQueue
 
-plugins:
-  - serverless-plugin-typescript
-  - serverless-offline
-  - serverless-dynamodb-local
-  - serverless-dotenv-plugin
-
 custom:
   esbuild:
     bundle: true
@@ -248,18 +269,3 @@ custom:
       inMemory: true
       migrate: true
       seed: true
-
-package:
-  patterns:
-    - '!node_modules/.prisma/**'
-    - '!node_modules/@prisma/engines/**'
-    - '!tests/**'
-    - '!coverage/**'
-    - '!.git/**'
-    - '!README.md'
-    - '!.env*'
-    - '!.eslintrc*'
-    - '!.prettierrc*'
-    - '!jest.config.*'
-    - '!tsconfig.json'
-    - '!.husky/**'

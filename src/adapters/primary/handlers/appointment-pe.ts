@@ -1,5 +1,5 @@
 import { SQSEvent } from 'aws-lambda';
-import { EventBridge } from 'aws-sdk';
+import { EventBridgeClient } from '@aws-sdk/client-eventbridge';
 import * as mysql from 'mysql2/promise';
 import { Appointment, AppointmentDTO, CountryISO, AppointmentStatus } from '../../../domain/entities/Appointment';
 import { MySQLCountryAppointmentRepository } from '../../secondary/repositories/MYSQLCountryRepository';
@@ -18,7 +18,7 @@ const dbConfig = {
 };
 
 // Cliente de EventBridge
-const eventBridgeClient = new EventBridge();
+const eventBridgeClient = new EventBridgeClient();
 const eventBusName = process.env.EVENT_BUS_NAME || '';
 
 // Crear pool de conexiones MySQL

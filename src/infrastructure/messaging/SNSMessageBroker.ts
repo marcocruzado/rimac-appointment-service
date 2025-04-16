@@ -1,14 +1,15 @@
-import { SNS, EventBridge } from 'aws-sdk';
+import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
+import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
 import { MessageBroker } from '../../domain/ports/secondary/MessageBroker';
 import { Appointment } from '../../domain/entities/Appointment';
 
 export class SNSMessageBroker implements MessageBroker {
-  private sns: SNS;
-  private eventBridge: EventBridge;
+  private sns: SNSClient;
+  private eventBridge: EventBridgeClient;
 
   constructor(private readonly topicArn: string) {
-    this.sns = new SNS();
-    this.eventBridge = new EventBridge();
+    this.sns = new SNSClient({ region: 'us-east-1' });
+    this.eventBridge = new EventBridgeClient({ region: 'us-east-1' });
   }
 
   async publish(event: string, data: any, attributes?: Record<string, string>): Promise<void> {
@@ -29,7 +30,7 @@ export class SNSMessageBroker implements MessageBroker {
         }), {}) : undefined
     };
 
-    await this.sns.publish(params).promise();
+    await this.sns.send(new PublishCommand(params));
   }
 
   async sendEvent(
@@ -38,7 +39,7 @@ export class SNSMessageBroker implements MessageBroker {
     detailType: string,
     appointment: Appointment
   ): Promise<void> {
-    await this.eventBridge.putEvents({
+    await this.eventBridge.send(new PutEventsCommand({
       Entries: [
         {
           EventBusName: eventBus,
@@ -47,6 +48,6 @@ export class SNSMessageBroker implements MessageBroker {
           Detail: JSON.stringify(appointment)
         }
       ]
-    }).promise();
+    }));
   }
 } 

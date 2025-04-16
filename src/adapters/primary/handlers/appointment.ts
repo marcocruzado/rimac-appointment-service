@@ -1,5 +1,8 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
-import { DynamoDB, SNS, EventBridge } from 'aws-sdk';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { SNSClient } from '@aws-sdk/client-sns';
+import { EventBridgeClient } from '@aws-sdk/client-eventbridge';
 import middy from '@middy/core';
 import jsonBodyParser from '@middy/http-json-body-parser';
 import { AppointmentController } from '../controllers/AppointmentController';
@@ -12,9 +15,10 @@ import { DynamoDBAppointmentRepository } from '../../secondary/repositories/Dyna
 import { AWSMessageBroker } from '../../secondary/messaging/AWSMessageBroker'; 
 
 // Inicialización de clientes de AWS
-const dynamoDBClient = new DynamoDB.DocumentClient();
-const snsClient = new SNS();
-const eventBridgeClient = new EventBridge();
+const dynamoClient = new DynamoDBClient({});
+const dynamoDBClient = DynamoDBDocumentClient.from(dynamoClient);
+const snsClient = new SNSClient({});
+const eventBridgeClient = new EventBridgeClient({});
 
 // Obtener variables de entorno
 const tableName = process.env.APPOINTMENTS_TABLE || 'appointments';
