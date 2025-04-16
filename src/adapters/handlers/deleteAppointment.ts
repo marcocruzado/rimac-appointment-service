@@ -1,14 +1,12 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import * as mysql from 'mysql2/promise';
 import middy from '@middy/core';
-import jsonBodyParser from '@middy/http-json-body-parser';
-import { CreateAppointmentDto } from '../../domain/entities/Appointment';
-import { CreateAppointmentUseCase } from '../../application/usecases/CreateAppointmentUseCase';
 import { MySQLAppointmentRepository } from '../../infrastructure/repositories/MySQLAppointmentRepository';
-import { SNSMessageBroker } from '../../infrastructure/messaging/SNSMessageBroker';
+import { DeleteAppointmentUseCase } from '../../application/usecases/DeleteAppointmentUseCase';
 import { AppointmentValidator } from '../../domain/validators/AppointmentValidator';
 import { ValidationError } from '../../domain/errors/AppointmentError';
 import { errorHandler } from '../middlewares/errorHandler';
+import { CountryISO } from '../../domain/entities/Appointment';
 
 const createConnections = async () => {
   const connections: { [key: string]: mysql.Connection } = {};
@@ -30,34 +28,30 @@ const createConnections = async () => {
   return connections;
 };
 
-const createAppointmentHandler: APIGatewayProxyHandler = async (event) => {
-  const data = event.body as unknown as CreateAppointmentDto;
+const deleteAppointmentHandler: APIGatewayProxyHandler = async (event) => {
+  const { appointmentId, country } = event.pathParameters || {};
 
-  const validationErrors = AppointmentValidator.validateCreateAppointment(data);
-  if (validationErrors.length > 0) {
-    throw new ValidationError('Error de validación', validationErrors);
+  if (!appointmentId || !country) {
+    throw new ValidationError('Error de validación', ['appointmentId y country son requeridos']);
   }
 
   const connections = await createConnections();
   const repository = new MySQLAppointmentRepository(connections);
-  const messageBroker = new SNSMessageBroker(process.env.SNS_TOPIC_ARN || '');
-  const useCase = new CreateAppointmentUseCase(repository, messageBroker);
+  const useCase = new DeleteAppointmentUseCase(repository);
 
-  const appointment = await useCase.execute(data);
-
+  await useCase.execute(appointmentId!, country as CountryISO);
   await Promise.all(Object.values(connections).map(conn => conn.end()));
 
   return {
-    statusCode: 201,
+    statusCode: 204,
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Credentials': true,
     },
-    body: JSON.stringify(appointment)
+    body: ''
   };
 };
 
-export const handler = middy(createAppointmentHandler)
-  .use(jsonBodyParser())
+export const handler = middy(deleteAppointmentHandler)
   .use(errorHandler()); 

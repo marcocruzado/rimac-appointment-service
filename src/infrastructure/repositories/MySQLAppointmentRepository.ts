@@ -1,6 +1,6 @@
 import { Connection } from 'mysql2/promise';
 import { v4 as uuidv4 } from 'uuid';
-import { Appointment, AppointmentStatus, CreateAppointmentDto } from '../../domain/entities/Appointment';
+import { Appointment, AppointmentStatus, CreateAppointmentDto, CountryISO } from '../../domain/entities/Appointment';
 import { AppointmentRepository } from '../../domain/repositories/AppointmentRepository';
 
 export class MySQLAppointmentRepository implements AppointmentRepository {
@@ -24,8 +24,8 @@ export class MySQLAppointmentRepository implements AppointmentRepository {
     return new Appointment(
       id,
       data.insuredId,
-      data.scheduleId,
-      data.countryIso,
+      data.scheduleId.toString() as string,
+      data.countryIso as CountryISO,
       AppointmentStatus.PENDING,
       new Date(),
       new Date());
@@ -48,8 +48,8 @@ export class MySQLAppointmentRepository implements AppointmentRepository {
     return new Appointment(
       row.id,
       row.insured_id,
-      row.schedule_id,
-      row.country_iso as 'PE' | 'CL',
+      row.schedule_id.toString() as string,
+      row.country_iso as CountryISO,
       row.status as AppointmentStatus,
       new Date(row.created_at),
       new Date(row.updated_at));
@@ -71,8 +71,8 @@ export class MySQLAppointmentRepository implements AppointmentRepository {
     return rows.map((row: any) => new Appointment(
       row.id,
       row.insured_id,
-      row.schedule_id,
-      row.country_iso as 'PE' | 'CL',
+      row.schedule_id.toString() as string,
+      row.country_iso as CountryISO,
       row.status as AppointmentStatus,
       new Date(row.created_at), new Date(row.updated_at)));
   }

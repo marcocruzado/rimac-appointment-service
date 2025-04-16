@@ -1,6 +1,7 @@
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { PutCommand, GetCommand, QueryCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
-import { Appointment, AppointmentDTO } from '../../../domain/entities/Appointment';
+import { v4 as uuidv4 } from 'uuid';
+import { Appointment, AppointmentDTO, CreateAppointmentDto, AppointmentStatus, CountryISO } from '../../../domain/entities/Appointment';
 import { AppointmentRepository } from '../../../domain/ports/secondary/AppointmentRepository';
 
 /**
@@ -24,11 +25,20 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
    * @returns Promesa con la cita guardada
    */
   async save(appointment: Appointment): Promise<Appointment> {
-    const appointmentDTO = appointment.toDTO();
+    const now = new Date();
+    appointment.updatedAt = now;
     
     await this.dynamoDBClient.send(new PutCommand({
       TableName: this.tableName,
-      Item: appointmentDTO
+      Item: {
+        id: appointment.id,
+        insuredId: appointment.insuredId,
+        scheduleId: appointment.scheduleId,
+        countryIso: appointment.countryIso,
+        status: appointment.status,
+        createdAt: appointment.createdAt.toISOString(),
+        updatedAt: appointment.updatedAt.toISOString()
+      }
     }));
     
     return appointment;
@@ -49,7 +59,15 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
       return null;
     }
     
-    return Appointment.fromDTO(result.Item as AppointmentDTO);
+    return new Appointment(
+      result.Item.id,
+      result.Item.insuredId,
+      result.Item.scheduleId,
+      result.Item.countryIso as CountryISO,
+      result.Item.status as AppointmentStatus,
+      new Date(result.Item.createdAt),
+      new Date(result.Item.updatedAt)
+    );
   }
 
   /**
@@ -67,11 +85,15 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
       }
     }));
     
-    if (!result.Items || result.Items.length === 0) {
-      return [];
-    }
-    
-    return result.Items.map(item => Appointment.fromDTO(item as AppointmentDTO));
+    return (result.Items || []).map(item => new Appointment(
+      item.id,
+      item.insuredId,
+      item.scheduleId,
+      item.countryIso as CountryISO,
+      item.status as AppointmentStatus,
+      new Date(item.createdAt),
+      new Date(item.updatedAt)
+    ));
   }
 
   /**
@@ -80,7 +102,7 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
    * @returns Promesa con la cita actualizada
    */
   async update(appointment: Appointment): Promise<Appointment> {
-    const appointmentDTO = appointment.toDTO();
+    appointment.updatedAt = new Date();
     
     await this.dynamoDBClient.send(new UpdateCommand({
       TableName: this.tableName,
@@ -90,15 +112,26 @@ export class DynamoDBAppointmentRepository implements AppointmentRepository {
         '#status': 'status'
       },
       ExpressionAttributeValues: {
-        ':status': appointmentDTO.status,
-        ':updatedAt': appointmentDTO.updatedAt
+        ':status': appointment.status,
+        ':updatedAt': appointment.updatedAt.toISOString()
       }
     }));
     
     return appointment;
   }
 
-  async create(appointment: Appointment): Promise<Appointment> {
+  async create(data: CreateAppointmentDto): Promise<Appointment> {
+    const now = new Date();
+    const appointment = new Appointment(
+      uuidv4(),
+      data.insuredId,
+      data.scheduleId.toString(),
+      data.countryIso as CountryISO,
+      AppointmentStatus.PENDING,
+      now,
+      now
+    );
+
     return this.save(appointment);
   }
 

@@ -28,7 +28,7 @@ export class CreateAppointmentUseCase {
       // Verificar si el asegurado ya tiene citas pendientes
       const existingAppointments = await this.appointmentRepository.findByInsuredId(
         data.insuredId,
-        data.countryIso
+        data.countryIso as CountryISO
       );
 
       const hasPendingAppointment = existingAppointments.some(
@@ -43,8 +43,8 @@ export class CreateAppointmentUseCase {
       const appointment = new Appointment(
         uuidv4(),
         data.insuredId,
-        data.scheduleId,
-        data.countryIso
+        data.scheduleId.toString(),
+        data.countryIso as CountryISO
       );
 
       // Guardar en la base de datos

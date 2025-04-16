@@ -19,94 +19,112 @@ package:
     - "!.build/**"
     - "!.serverless/**"
     - "!.git/**"
-    - "!.github/**"
-    - "!.husky/**"
-    - "!.vscode/**"
     - "!**/*.test.ts"
 
 provider:
   name: aws
   runtime: nodejs18.x
   stage: ${opt:stage, 'dev'}
-  region: ${opt:region, 'us-east-1'}
-  deploymentBucket:
-    maxVersions: 5
-    blockPublicAccess: true
-    versioning: false
-  deploymentPrefix: serverless
+  region: us-east-1
   environment:
-    NODE_OPTIONS: '--enable-source-maps'
+    APPOINTMENTS_TABLE: ${self:service}-appointments-${opt:stage, self:provider.stage}
+    SNS_TOPIC_ARN: 
+      Ref: AppointmentTopic
     MYSQL_HOST_PE: ${env:MYSQL_HOST_PE}
     MYSQL_USER_PE: ${env:MYSQL_USER_PE}
     MYSQL_PASSWORD_PE: ${env:MYSQL_PASSWORD_PE}
     MYSQL_DATABASE_PE: ${env:MYSQL_DATABASE_PE}
-    MYSQL_PORT_PE: ${env:MYSQL_PORT_PE}
     MYSQL_HOST_CL: ${env:MYSQL_HOST_CL}
     MYSQL_USER_CL: ${env:MYSQL_USER_CL}
     MYSQL_PASSWORD_CL: ${env:MYSQL_PASSWORD_CL}
     MYSQL_DATABASE_CL: ${env:MYSQL_DATABASE_CL}
-    MYSQL_PORT_CL: ${env:MYSQL_PORT_CL}
-    APPOINTMENTS_TABLE: appointments-${self:provider.stage}
-    SNS_TOPIC_ARN: !Ref AppointmentTopic
-    SQS_APPOINTMENT_PE_URL: !Ref AppointmentPeQueue
-    SQS_APPOINTMENT_CL_URL: !Ref AppointmentClQueue
-    SQS_CONFIRMATION_URL: !Ref ConfirmationQueue
-    EVENT_BUS_NAME: !Ref AppointmentEventBus
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:PutItem
-        - dynamodb:GetItem
-        - dynamodb:Query
-        - dynamodb:Scan
-        - dynamodb:UpdateItem
-      Resource: !GetAtt AppointmentsTable.Arn
-    - Effect: Allow
-      Action:
-        - sns:Publish
-      Resource: !Ref AppointmentTopic
-    - Effect: Allow
-      Action:
-        - sqs:SendMessage
-        - sqs:ReceiveMessage
-        - sqs:DeleteMessage
-        - sqs:GetQueueAttributes
-      Resource:
-        - !GetAtt AppointmentPeQueue.Arn
-        - !GetAtt AppointmentClQueue.Arn
-        - !GetAtt ConfirmationQueue.Arn
-    - Effect: Allow
-      Action:
-        - events:PutEvents
-      Resource: !GetAtt AppointmentEventBus.Arn
-    - Effect: Allow
-      Action:
-        - rds:*
-      Resource: "*"
+  
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource: 
+            Fn::GetAtt: [AppointmentTopic, TopicArn]
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+          Resource: 
+            - Fn::GetAtt: [AppointmentsTable, Arn]
+            - Fn::Join:
+                - ''
+                - - Fn::GetAtt: [AppointmentsTable, Arn]
+                  - '/index/*'
 
 functions:
   createAppointment:
     handler: src/adapters/handlers/createAppointment.handler
-    timeout: 30
     events:
       - http:
           path: /appointments
           method: post
           cors: true
 
-  appointmentPe:
-    handler: src/adapters/primary/handlers/appointment-pe.handler
+  processConfirmation:
+    handler: src/adapters/handlers/processConfirmation.handler
     events:
-      - sqs:
-          arn: !GetAtt AppointmentPeQueue.Arn
-          batchSize: 1
+      - sns:
+          arn: arn:aws:sns:${aws:region}:${aws:accountId}:${self:service}-appointments-${self:provider.stage}
+          filterPolicy:
+            countryIso:
+              - PE
+              - CL
 
-  appointmentCl:
-    handler: src/adapters/primary/handlers/appointment-cl.handler
+  getAppointment:
+    handler: src/adapters/handlers/getAppointment.handler
     events:
-      - sqs:
-          arn: !GetAtt AppointmentClQueue.Arn
-          batchSize: 1
+      - http:
+          path: /appointments/{appointmentId}/country/{country}
+          method: get
+          cors: true
+
+  updateAppointment:
+    handler: src/adapters/handlers/updateAppointment.handler
+    events:
+      - http:
+          path: /appointments/{appointmentId}/country/{country}
+          method: put
+          cors: true
+
+  deleteAppointment:
+    handler: src/adapters/handlers/deleteAppointment.handler
+    events:
+      - http:
+          path: /appointments/{appointmentId}/country/{country}
+          method: delete
+          cors: true
+
+  listAppointments:
+    handler: src/adapters/handlers/listAppointments.handler
+    events:
+      - http:
+          path: /appointments
+          method: get
+          cors: true
+
+  swagger:
+    handler: src/adapters/handlers/swagger.handler
+    events:
+      - http:
+          path: /swagger
+          method: get
+          cors: true
+
+custom:
+  serverless-offline:
+    httpPort: 3000
+  serverless-plugin-typescript:
+    tsConfigFileLocation: './tsconfig.json'
 
 resources:
   Resources:
@@ -114,7 +132,6 @@ resources:
       Type: AWS::DynamoDB::Table
       Properties:
         TableName: ${self:provider.environment.APPOINTMENTS_TABLE}
-        BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S
@@ -130,142 +147,14 @@ resources:
                 KeyType: HASH
             Projection:
               ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 5
+              WriteCapacityUnits: 5
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
 
     AppointmentTopic:
       Type: AWS::SNS::Topic
       Properties:
-        TopicName: appointment-topic-${self:provider.stage}
-        Tags:
-          - Key: environment
-            Value: ${self:provider.stage}
-
-    AppointmentPeSnsSubscription:
-      Type: AWS::SNS::Subscription
-      Properties:
-        TopicArn: !Ref AppointmentTopic
-        Protocol: sqs
-        Endpoint: !GetAtt AppointmentPeQueue.Arn
-        FilterPolicy:
-          countryISO:
-            - PE
-
-    AppointmentClSnsSubscription:
-      Type: AWS::SNS::Subscription
-      Properties:
-        TopicArn: !Ref AppointmentTopic
-        Protocol: sqs
-        Endpoint: !GetAtt AppointmentClQueue.Arn
-        FilterPolicy:
-          countryISO:
-            - CL
-
-    AppointmentPeQueue:
-      Type: AWS::SQS::Queue
-      Properties:
-        QueueName: appointment-pe-queue-${self:provider.stage}
-        MessageRetentionPeriod: 1209600 # 14 days in seconds
-        VisibilityTimeout: 300 # 5 minutes
-
-    AppointmentClQueue:
-      Type: AWS::SQS::Queue
-      Properties:
-        QueueName: appointment-cl-queue-${self:provider.stage}
-        MessageRetentionPeriod: 1209600 # 14 days in seconds
-        VisibilityTimeout: 300 # 5 minutes
-
-    ConfirmationQueue:
-      Type: AWS::SQS::Queue
-      Properties:
-        QueueName: confirmation-queue-${self:provider.stage}
-        MessageRetentionPeriod: 1209600 # 14 days in seconds
-        VisibilityTimeout: 300 # 5 minutes
-
-    AppointmentPeQueuePolicy:
-      Type: AWS::SQS::QueuePolicy
-      Properties:
-        PolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Principal: "*"
-              Action: "sqs:SendMessage"
-              Resource: !GetAtt AppointmentPeQueue.Arn
-              Condition:
-                ArnEquals:
-                  "aws:SourceArn": !Ref AppointmentTopic
-        Queues:
-          - !Ref AppointmentPeQueue
-
-    AppointmentClQueuePolicy:
-      Type: AWS::SQS::QueuePolicy
-      Properties:
-        PolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Principal: "*"
-              Action: "sqs:SendMessage"
-              Resource: !GetAtt AppointmentClQueue.Arn
-              Condition:
-                ArnEquals:
-                  "aws:SourceArn": !Ref AppointmentTopic
-        Queues:
-          - !Ref AppointmentClQueue
-
-    AppointmentEventBus:
-      Type: AWS::Events::EventBus
-      Properties:
-        Name: appointment-event-bus-${self:provider.stage}
-
-    AppointmentConfirmationRule:
-      Type: AWS::Events::Rule
-      Properties:
-        EventBusName: !Ref AppointmentEventBus
-        EventPattern:
-          source:
-            - "appointment.service"
-          detail-type:
-            - "AppointmentConfirmed"
-        State: ENABLED
-        Targets:
-          - Arn: !GetAtt ConfirmationQueue.Arn
-            Id: "AppointmentConfirmationTarget"
-
-    EventBusToSqsPermission:
-      Type: AWS::SQS::QueuePolicy
-      Properties:
-        PolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service: events.amazonaws.com
-              Action: "sqs:SendMessage"
-              Resource: !GetAtt ConfirmationQueue.Arn
-              Condition:
-                ArnEquals:
-                  "aws:SourceArn": !GetAtt AppointmentConfirmationRule.Arn
-        Queues:
-          - !Ref ConfirmationQueue
-
-custom:
-  esbuild:
-    bundle: true
-    minify: true
-    sourcemap: true
-    target: 'node18'
-    platform: 'node'
-    external:
-      - '@aws-sdk/client-dynamodb'
-      - '@aws-sdk/client-sns'
-      - '@aws-sdk/client-sqs'
-      - '@aws-sdk/client-eventbridge'
-      - '@aws-sdk/lib-dynamodb'
-  dynamodb:
-    stages:
-      - dev
-    start:
-      port: 8000
-      inMemory: true
-      migrate: true
-      seed: true
+        TopicName: ${self:service}-appointments-${self:provider.stage}

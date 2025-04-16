@@ -1,0 +1,162 @@
+openapi: 3.0.0
+info:
+  title: Rimac Appointment Service
+  version: 1.0.0
+  description: API para gestión de citas médicas
+
+paths:
+  /appointments:
+    post:
+      summary: Crear nueva cita
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAppointmentDto'
+      responses:
+        '201':
+          description: Cita creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentDTO'
+        '400':
+          description: Error de validación
+          
+  /appointments/{appointmentId}/country/{country}:
+    get:
+      summary: Obtener cita por ID y país
+      parameters:
+        - name: appointmentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: country
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [PE, CL]
+      responses:
+        '200':
+          description: Cita encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentDTO'
+        '404':
+          description: Cita no encontrada
+          
+    put:
+      summary: Actualizar cita
+      parameters:
+        - name: appointmentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: country
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [PE, CL]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAppointmentParams'
+      responses:
+        '200':
+          description: Cita actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentDTO'
+        '404':
+          description: Cita no encontrada
+          
+    delete:
+      summary: Eliminar cita
+      parameters:
+        - name: appointmentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: country
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [PE, CL]
+      responses:
+        '204':
+          description: Cita eliminada exitosamente
+        '404':
+          description: Cita no encontrada
+
+components:
+  schemas:
+    CreateAppointmentDto:
+      type: object
+      required:
+        - insuredId
+        - scheduleId
+        - countryIso
+      properties:
+        insuredId:
+          type: string
+        scheduleId:
+          type: number
+        countryIso:
+          type: string
+          enum: [PE, CL]
+        schedule:
+          $ref: '#/components/schemas/Schedule'
+          
+    Schedule:
+      type: object
+      required:
+        - centerId
+        - specialtyId
+        - medicId
+        - date
+      properties:
+        centerId:
+          type: number
+        specialtyId:
+          type: number
+        medicId:
+          type: number
+        date:
+          type: string
+          format: date-time
+          
+    UpdateAppointmentParams:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, CANCELLED, COMPLETED]
+          
+    AppointmentDTO:
+      type: object
+      properties:
+        id:
+          type: string
+        insuredId:
+          type: string
+        scheduleId:
+          type: number
+        countryISO:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string 
